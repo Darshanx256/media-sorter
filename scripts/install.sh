@@ -52,7 +52,7 @@ case "${ml_choice}" in
 esac
 
 echo
-echo "Step 3/3: Optional video/face dependencies"
+echo "Step 3/4: Optional video/face dependencies"
 video_choice="$(prompt_choice "Install video extra? [y/N]: ")"
 if [[ "${video_choice}" == "y" || "${video_choice}" == "yes" ]]; then
   run_pip install -e .[video]
@@ -61,5 +61,17 @@ else
   echo "Skipping video/face dependencies."
 fi
 
+echo
+echo "Step 4/4: Optional finalize/export dependencies"
+finalize_choice="$(prompt_choice "Install finalize extra? [y/N]: ")"
+if [[ "${finalize_choice}" == "y" || "${finalize_choice}" == "yes" ]]; then
+  run_pip install -e .[finalize]
+  echo "Finalize/export dependencies installed."
+else
+  echo "Skipping finalize/export dependencies."
+fi
+
+echo
+echo "Tip: run 'media-sorter doctor --expect-finalize --expect-video' to verify the environment."
 echo
 echo "Setup complete."

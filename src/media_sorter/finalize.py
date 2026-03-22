@@ -3,10 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 from textwrap import dedent
 from typing import Any
 
 import numpy as np
+from PIL import Image
 
 from .config import SorterConfig
 from .core import MediaClassifier
@@ -21,6 +25,14 @@ class FinalizeArtifacts:
     embeddings_path: Path
     runner_path: Path
     requirements_path: Path
+
+
+@dataclass(slots=True)
+class BundleValidationResult:
+    ok: bool
+    checked_files: list[str]
+    runner_checked: bool
+    errors: list[str]
 
 
 class BundleFinalizer:
@@ -115,7 +127,7 @@ class BundleFinalizer:
         if include_runner:
             runner_path.write_text(self._runner_script(), encoding="utf-8")
 
-        return FinalizeArtifacts(
+        artifacts = FinalizeArtifacts(
             bundle_dir=bundle_path,
             model_path=model_path,
             quantized_model_path=quantized_model_path,
@@ -124,6 +136,155 @@ class BundleFinalizer:
             runner_path=runner_path,
             requirements_path=requirements_path,
         )
+        validation = self.validate_bundle(artifacts, check_runner=include_runner)
+        if not validation.ok:
+            joined = "\n".join(validation.errors)
+            raise RuntimeError(f"Finalize bundle validation failed:\n{joined}")
+        return artifacts
+
+    def validate_bundle(
+        self,
+        artifacts: FinalizeArtifacts,
+        *,
+        check_runner: bool = True,
+    ) -> BundleValidationResult:
+        errors: list[str] = []
+        checked_files = [
+            artifacts.model_path.name,
+            artifacts.config_path.name,
+            artifacts.embeddings_path.name,
+            artifacts.requirements_path.name,
+        ]
+        if artifacts.quantized_model_path is not None:
+            checked_files.append(artifacts.quantized_model_path.name)
+        if artifacts.runner_path.exists():
+            checked_files.append(artifacts.runner_path.name)
+
+        for file_name in checked_files:
+            if not (artifacts.bundle_dir / file_name).exists():
+                errors.append(f"Missing bundle artifact: {file_name}")
+
+        config_payload: dict[str, Any] = {}
+        if artifacts.config_path.exists():
+            try:
+                config_payload = json.loads(artifacts.config_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                errors.append(f"Could not parse config.json: {type(exc).__name__}: {exc}")
+        else:
+            errors.append("Missing bundle artifact: config.json")
+
+        runtime = config_payload.get("runtime", {})
+        primary_model = runtime.get("primary_model")
+        fallback_model = runtime.get("fallback_model")
+        embeddings_file = runtime.get("embeddings_file")
+
+        if not primary_model or not (artifacts.bundle_dir / str(primary_model)).exists():
+            errors.append("Primary model path in config.json does not exist")
+        if not fallback_model or not (artifacts.bundle_dir / str(fallback_model)).exists():
+            errors.append("Fallback model path in config.json does not exist")
+        if not embeddings_file or not (artifacts.bundle_dir / str(embeddings_file)).exists():
+            errors.append("Embeddings path in config.json does not exist")
+
+        bundle_version = config_payload.get("bundle_version")
+        if not isinstance(bundle_version, int) or bundle_version < 1:
+            errors.append("config.json must contain a valid integer bundle_version")
+
+        labels = config_payload.get("labels", {})
+        prompts = config_payload.get("prompts", {})
+        features = config_payload.get("features", {})
+        thresholds = config_payload.get("thresholds", {})
+
+        expected_label_groups = ("subject", "count", "category")
+        for group_name in expected_label_groups:
+            label_values = labels.get(group_name)
+            prompt_values = prompts.get(group_name)
+            if not isinstance(label_values, list) or not label_values:
+                errors.append(f"labels.{group_name} must be a non-empty list")
+                continue
+            if group_name == "count":
+                if not isinstance(prompt_values, list) or len(prompt_values) != len(label_values):
+                    errors.append("prompts.count must match labels.count length")
+            else:
+                if not isinstance(prompt_values, dict) or len(prompt_values) != len(label_values):
+                    errors.append(f"prompts.{group_name} must match labels.{group_name} length")
+
+        for key in (
+            "min_person_confidence",
+            "min_solo_confidence",
+            "min_solo_margin",
+            "min_solo_frame_ratio",
+            "min_category_confidence",
+        ):
+            value = thresholds.get(key)
+            if not isinstance(value, (int, float)):
+                errors.append(f"thresholds.{key} must be numeric")
+
+        if features.get("image_analysis") is not True:
+            errors.append("features.image_analysis must be true")
+        if features.get("video_analysis") not in {False, 0}:
+            errors.append("features.video_analysis must be false for the current finalized runtime")
+        if features.get("face_sorting") not in {False, 0}:
+            errors.append("features.face_sorting must be false for the current finalized runtime")
+
+        try:
+            embeddings = np.load(artifacts.embeddings_path)
+            for group_name in expected_label_groups:
+                if group_name not in embeddings:
+                    errors.append(f"text_embeddings.npz missing '{group_name}' array")
+                    continue
+                expected_rows = len(labels.get(group_name, []))
+                actual_rows = int(embeddings[group_name].shape[0]) if embeddings[group_name].ndim >= 1 else 0
+                if actual_rows != expected_rows:
+                    errors.append(
+                        f"text_embeddings.npz '{group_name}' rows ({actual_rows}) do not match labels.{group_name} ({expected_rows})"
+                    )
+        except Exception as exc:
+            errors.append(f"Could not validate text_embeddings.npz: {type(exc).__name__}: {exc}")
+
+        runner_checked = False
+        if check_runner and artifacts.runner_path.exists():
+            runner_checked = True
+            errors.extend(self._validate_runner_execution(artifacts.runner_path))
+
+        return BundleValidationResult(
+            ok=not errors,
+            checked_files=checked_files,
+            runner_checked=runner_checked,
+            errors=errors,
+        )
+
+    def _validate_runner_execution(self, runner_path: Path) -> list[str]:
+        errors: list[str] = []
+        with tempfile.TemporaryDirectory(prefix="media_sorter_runner_check_") as tmp_dir_name:
+            tmp_dir = Path(tmp_dir_name)
+            image_path = tmp_dir / "smoke.png"
+            Image.new("RGB", (224, 224), color=(120, 180, 200)).save(image_path)
+            completed = subprocess.run(
+                [sys.executable, str(runner_path), str(image_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if completed.returncode != 0:
+                stderr = completed.stderr.strip() or completed.stdout.strip()
+                errors.append(f"Generated runner failed smoke test: {stderr or 'unknown error'}")
+                return errors
+
+            stdout = completed.stdout.strip().splitlines()
+            if not stdout:
+                errors.append("Generated runner produced no output during smoke test")
+                return errors
+
+            try:
+                payload = json.loads(stdout[-1])
+            except json.JSONDecodeError as exc:
+                errors.append(f"Generated runner output is not valid JSON: {exc}")
+                return errors
+
+            for key in ("source", "subject", "subject_scores", "category", "category_scores"):
+                if key not in payload:
+                    errors.append(f"Generated runner output is missing '{key}'")
+        return errors
 
     def _ensure_export_deps(self) -> None:
         missing: list[str] = []

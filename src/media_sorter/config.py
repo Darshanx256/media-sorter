@@ -5,11 +5,18 @@ from pathlib import Path
 
 
 DEFAULT_LEVEL_PROMPTS: dict[str, str] = {
-    "level_1": "description of type 1",
-    "level_2": "description of type 2",
-    "level_3": "description of type 3",
-    "level_4": "description of type 4",
-    "level_5": "description of type 5",
+    "portrait": "a portrait photo of one person as the main subject",
+    "group": "a photo of multiple people together",
+    "pet": "a clear photo of a pet animal such as a dog or cat",
+    "food": "a photo of food, a meal, or a drink",
+    "travel": "a travel photo of a landmark, destination, or scenic place",
+    "outdoor": "an outdoor photo in nature, a park, beach, or street scene",
+    "document": "a photo or scan of a document, receipt, note, or paper",
+    "screenshot": "a screenshot of a phone, app, website, or computer screen",
+    "product": "a product photo of an object for catalog or listing use",
+    "art": "artwork, illustration, drawing, poster, or graphic design image",
+    "meme": "a meme, joke image, or internet reaction image",
+    "other": "a miscellaneous photo that does not fit the other categories well",
 }
 
 DEFAULT_COUNT_LABELS: tuple[str, str, str] = (

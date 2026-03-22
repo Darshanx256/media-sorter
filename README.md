@@ -348,11 +348,63 @@ Useful options:
 - `--no-quantize` keeps only the base ONNX model
 - `--no-runner` skips generating the standalone runtime script
 - `--prompts` freezes a custom category prompt set into the bundle
+- `--prompts-file` loads category prompts from JSON or YAML
 - `--subject-prompts` freezes custom subject prompts into the bundle
+- `--subject-prompts-file` loads subject prompts from JSON or YAML
 
 The finalize command is intended for the point where prompts and thresholds are already chosen and a developer wants a smaller, more portable output for application integration.
 
 In practice, the quantized model is usually the deployment artifact you actually ship.
+
+### Check The Environment
+
+```bash
+media-sorter doctor
+media-sorter doctor --expect-finalize --expect-video
+```
+
+The doctor command reports:
+
+- Python executable and version
+- ML backend readiness
+- finalize/export readiness
+- optional video runtime readiness
+- actionable install hints for missing pieces
+
+### Load Prompt Packs From Files
+
+Inline JSON flags still work, but file-based prompt packs are easier to maintain for real projects.
+
+Category prompt pack example:
+
+```yaml
+level_prompts:
+  portrait: a portrait photo of one person
+  group: a photo of multiple people together
+  food: a photo of food or a meal
+```
+
+Subject prompt pack example:
+
+```yaml
+subject_prompts:
+  person: a photo of a person
+  pet: a photo of a pet animal
+  other: a photo of a scene or object without people or pets
+```
+
+Use them from the CLI:
+
+```bash
+media-sorter ./input_media \
+  --prompts-file ./category_prompts.yaml \
+  --subject-prompts-file ./subject_prompts.yaml
+```
+
+Prompt precedence is deterministic:
+
+- inline JSON flags override prompt-pack files
+- prompt-pack files override built-in defaults
 
 ## Public API
 
@@ -449,8 +501,9 @@ By default:
 
 Important note:
 
-- the shipped default category prompts are generic placeholders such as `level_1`, `level_2`, and so on
-- for real application use, you should almost always provide your own category prompts
+- the shipped default category prompts are now a general gallery-oriented starter pack:
+  `portrait`, `group`, `pet`, `food`, `travel`, `outdoor`, `document`, `screenshot`, `product`, `art`, `meme`, `other`
+- for real application use, you will still get better results if you provide category prompts tuned to your own domain
 - the library becomes much more useful once the prompt set reflects your actual domain
 
 The bundled sorter uses those groups to make routing decisions, but applications can ignore the built-in routing and use the raw score maps directly.
@@ -518,6 +571,17 @@ The bundle stores:
 
 That means deployment consumers do not need to rebuild the prompt set or the text encoder during normal runtime use.
 
+### Finalize Validation
+
+Finalize now validates the bundle before returning success:
+
+- required files must exist
+- `config.json` must reference valid bundle files
+- embedding matrix sizes must match configured labels
+- the generated runner is smoke-tested against a tiny image when the runner is included
+
+That keeps finalize closer to a release workflow instead of a best-effort export only.
+
 ### Current Bundle Scope
 
 The finalized runtime is currently best thought of as an image-first deployment path.
@@ -559,7 +623,9 @@ Important flags:
 Prompt flags:
 
 - `--prompts`
+- `--prompts-file`
 - `--subject-prompts`
+- `--subject-prompts-file`
 
 Video flags:
 
@@ -579,13 +645,26 @@ Important flags:
 - `--device`
 - `--model`
 - `--prompts`
+- `--prompts-file`
 - `--subject-prompts`
+- `--subject-prompts-file`
 - `--min-confidence`
 - `--min-person-confidence`
 - `--min-solo-confidence`
 - `--min-solo-margin`
 - `--no-quantize`
 - `--no-runner`
+
+### Doctor Command
+
+```bash
+media-sorter doctor --expect-finalize --expect-video
+```
+
+Important flags:
+
+- `--expect-finalize`
+- `--expect-video`
 
 ## Artifact Placement
 
@@ -617,7 +696,7 @@ src/media_sorter/
 - package layout: `src/`
 - build configuration: `pyproject.toml`
 - current deployment export path: ONNX + ONNX Runtime
-- there is not yet a full automated test suite in the repository
+- automated test suite now covers config validation, prompt packs, CLI surfaces, analyzer/sorter smoke, finalize validation, and optional secondary-path smoke tests
 
 Because the project uses prompt-driven zero-shot classification, you should validate prompts and thresholds against representative media from your own domain before relying on a particular routing or moderation policy.
 

@@ -1,33 +1,12 @@
 import argparse
-import json
 from pathlib import Path
 import sys
 
-from .config import DEFAULT_LEVEL_PROMPTS, DEFAULT_SUBJECT_PROMPTS, SorterConfig
+from .config import SorterConfig
+from .doctor import render_doctor_report
 from .finalize import BundleFinalizer
 from .pipeline import MediaAnalyzer, MediaSorter
-
-
-def _parse_prompts(raw: str | None) -> dict[str, str]:
-    if not raw:
-        return dict(DEFAULT_LEVEL_PROMPTS)
-
-    prompts = json.loads(raw)
-    if not isinstance(prompts, dict) or not prompts:
-        raise ValueError("--prompts must be a non-empty JSON object")
-
-    return {str(k): str(v) for k, v in prompts.items()}
-
-
-def _parse_subject_prompts(raw: str | None) -> dict[str, str]:
-    if not raw:
-        return dict(DEFAULT_SUBJECT_PROMPTS)
-
-    prompts = json.loads(raw)
-    if not isinstance(prompts, dict) or not prompts:
-        raise ValueError("--subject-prompts must be a non-empty JSON object")
-
-    return {str(k): str(v) for k, v in prompts.items()}
+from .prompt_packs import resolve_level_prompts, resolve_subject_prompts
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -64,9 +43,19 @@ def build_parser() -> argparse.ArgumentParser:
         help='JSON dict for category prompts, e.g. {"portrait":"a studio portrait photo"}',
     )
     parser.add_argument(
+        "--prompts-file",
+        default=None,
+        help="Path to a JSON or YAML category prompt pack. File prompts override built-in defaults.",
+    )
+    parser.add_argument(
         "--subject-prompts",
         default=None,
         help='JSON dict for subject detection, e.g. {"person":"a person","pet":"a pet","other":"other"}',
+    )
+    parser.add_argument(
+        "--subject-prompts-file",
+        default=None,
+        help="Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults.",
     )
     parser.add_argument(
         "--max-video-frames",
@@ -186,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
 def build_finalize_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="media-sorter finalize",
-        description="Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script.",
+        description="Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today.",
     )
     parser.add_argument("bundle_dir", help="Directory to write the finalized deployment bundle into")
     parser.add_argument("--device", default="cpu", help="Torch device to initialize before export; cpu is recommended")
@@ -197,9 +186,19 @@ def build_finalize_parser() -> argparse.ArgumentParser:
         help='JSON dict for category prompts, e.g. {"portrait":"a studio portrait photo"}',
     )
     parser.add_argument(
+        "--prompts-file",
+        default=None,
+        help="Path to a JSON or YAML category prompt pack. File prompts override built-in defaults.",
+    )
+    parser.add_argument(
         "--subject-prompts",
         default=None,
         help='JSON dict for subject detection, e.g. {"person":"a person","pet":"a pet","other":"other"}',
+    )
+    parser.add_argument(
+        "--subject-prompts-file",
+        default=None,
+        help="Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults.",
     )
     parser.add_argument(
         "--min-confidence",
@@ -238,6 +237,24 @@ def build_finalize_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_doctor_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="media-sorter doctor",
+        description="Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready.",
+    )
+    parser.add_argument(
+        "--expect-video",
+        action="store_true",
+        help="Treat video support as part of the expected environment and report cv2 issues as actionable gaps.",
+    )
+    parser.add_argument(
+        "--expect-finalize",
+        action="store_true",
+        help="Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps.",
+    )
+    return parser
+
+
 def _run_finalize(argv: list[str]) -> int:
     parser = build_finalize_parser()
     try:
@@ -247,8 +264,11 @@ def _run_finalize(argv: list[str]) -> int:
             output_dir=None,
             device=args.device,
             model_name=args.model,
-            level_prompts=_parse_prompts(args.prompts),
-            subject_prompts=_parse_subject_prompts(args.subject_prompts),
+            level_prompts=resolve_level_prompts(inline_json=args.prompts, prompts_path=args.prompts_file),
+            subject_prompts=resolve_subject_prompts(
+                inline_json=args.subject_prompts,
+                prompts_path=args.subject_prompts_file,
+            ),
             min_category_confidence=args.min_confidence,
             min_person_confidence=args.min_person_confidence,
             min_solo_confidence=args.min_solo_confidence,
@@ -280,9 +300,24 @@ def _run_finalize(argv: list[str]) -> int:
     return 0
 
 
+def _run_doctor(argv: list[str]) -> int:
+    parser = build_doctor_parser()
+    args = parser.parse_args(argv)
+    print(
+        render_doctor_report(
+            expect_video=args.expect_video,
+            expect_finalize=args.expect_finalize,
+        ),
+        end="",
+    )
+    return 0
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "finalize":
         return _run_finalize(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+        return _run_doctor(sys.argv[2:])
 
     parser = build_parser()
     try:
@@ -294,8 +329,11 @@ def main() -> int:
             device=args.device,
             model_name=args.model,
             limit=args.limit,
-            level_prompts=_parse_prompts(args.prompts),
-            subject_prompts=_parse_subject_prompts(args.subject_prompts),
+            level_prompts=resolve_level_prompts(inline_json=args.prompts, prompts_path=args.prompts_file),
+            subject_prompts=resolve_subject_prompts(
+                inline_json=args.subject_prompts,
+                prompts_path=args.subject_prompts_file,
+            ),
             min_category_confidence=args.min_confidence,
             copy_mode=args.mode,
             dry_run=args.dry_run,
