@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-sorter"
+version = "0.2.0"
+description = "Prompt-driven media analysis and optional sorting library for images and videos"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  {name = "Darshan"}
+]
+keywords = ["clip", "image-classification", "video-classification", "face-sorting", "pet-detection", "media", "sorting", "automation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Image Recognition",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "Pillow>=10.0",
+  "numpy>=1.25",
+]
+
+[project.optional-dependencies]
+video = [
+  "opencv-python-headless>=4.8",
+]
+finalize = [
+  "onnx>=1.16",
+  "onnxscript>=0.1",
+  "onnxruntime>=1.18",
+]
+
+[project.scripts]
+media-sorter = "media_sorter.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["media_sorter*"]
