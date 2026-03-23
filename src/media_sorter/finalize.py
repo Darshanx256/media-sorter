@@ -525,6 +525,9 @@ class BundleFinalizer:
                 subject_labels = list(config["labels"]["subject"])
                 count_labels = list(config["labels"]["count"])
                 category_labels = list(config["labels"]["category"])
+                solo_count_label = count_labels[0]
+                no_person_count_label = count_labels[1]
+                multi_person_count_label = count_labels[2]
 
                 subject_scores = scores_from_embeddings(image_features, embeddings["subject"], subject_labels)
                 count_scores = scores_from_embeddings(image_features, embeddings["count"], count_labels)
@@ -536,10 +539,10 @@ class BundleFinalizer:
 
                 thresholds = config["thresholds"]
                 person_score = subject_scores.get("person", 0.0)
-                solo_score = count_scores.get("a photo of exactly one person", 0.0)
+                solo_score = count_scores.get(solo_count_label, 0.0)
                 non_solo = max(
-                    count_scores.get("a photo of no people", 0.0),
-                    count_scores.get("a photo of two or more people", 0.0),
+                    count_scores.get(no_person_count_label, 0.0),
+                    count_scores.get(multi_person_count_label, 0.0),
                 )
                 is_solo_person = (
                     subject == "person"

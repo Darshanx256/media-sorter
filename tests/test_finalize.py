@@ -72,7 +72,16 @@ def test_finalize_real_smoke_when_deps_are_available(tmp_path: Path) -> None:
     pytest.importorskip("onnxruntime")
     pytest.importorskip("onnxscript")
 
-    config = SorterConfig(source_dir=tmp_path, output_dir=None, device="cpu")
+    config = SorterConfig(
+        source_dir=tmp_path,
+        output_dir=None,
+        device="cpu",
+        count_labels=(
+            "an image showing exactly one person",
+            "an image with no people visible",
+            "an image showing multiple people",
+        ),
+    )
     bundle_dir = tmp_path / "bundle"
     artifacts = BundleFinalizer(config).finalize(bundle_dir)
 
@@ -99,3 +108,4 @@ def test_finalize_real_smoke_when_deps_are_available(tmp_path: Path) -> None:
     payload = json.loads(completed.stdout.strip().splitlines()[-1])
     assert "subject_scores" in payload
     assert "category_scores" in payload
+    assert payload["solo_label"] in config.count_labels
