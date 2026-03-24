@@ -710,6 +710,25 @@ Today the package supports three practical usage modes:
 
 That makes the project much more flexible than a plain folder sorter while still keeping a ready-made sorting workflow available for users who want it.
 
+## Translations
+
+The CLI is localized for the following languages:
+
+| Language | Code |
+|:--|:--|
+| Chinese (Simplified) | `zh_CN` |
+| Spanish | `es` |
+| French | `fr` |
+| Japanese | `ja` |
+| Korean | `ko` |
+| German | `de` |
+
+The active locale is detected from the standard environment variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, and `LANG`, in that order. No configuration is required — if your system locale is set, the CLI will pick it up automatically.
+
+Translation files live in `src/media_sorter/locales/<lang>/LC_MESSAGES/messages.po`.
+
+If you find a translation error or want to add a new language, open an issue or pull request with the corrected or new `.po` file.
+
 ## License
 
 This repository and its packaged distributions are released under the MIT License. See [LICENSE](LICENSE) for the full text.

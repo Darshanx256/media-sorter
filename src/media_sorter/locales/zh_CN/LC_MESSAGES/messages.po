@@ -1,0 +1,261 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: media-sorter\n"
+"POT-Creation-Date: 2026-03-24\n"
+"PO-Revision-Date: 2026-03-24\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyze media into structured records by default, with optional sorting workflows on top."
+msgstr "默认将媒体分析为结构化记录，并提供可选的排序工作流。"
+
+msgid "Source folder containing media"
+msgstr "包含媒体的源文件夹"
+
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr "排序媒体或分析工件的可选目标文件夹"
+
+msgid "Torch device, e.g. cpu or cuda"
+msgstr "Torch 设备，例如 cpu 或 cuda"
+
+msgid "CLIP model name"
+msgstr "CLIP 模型名称"
+
+msgid "Optional max number of files"
+msgstr "可选的最大文件数"
+
+msgid "Minimum category confidence before the bundled sorter routes media into a category bucket"
+msgstr "内置排序器将媒体路由到类别桶之前所需的最小类别置信度"
+
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr "如何应用结果：none（仅分析），copy（复制），或 move（移动）"
+
+msgid "Run without writing files"
+msgstr "不写入文件运行"
+
+msgid "JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait photo\"}"
+msgstr "类别提示的 JSON 字典，例如 {\"portrait\":\"a studio portrait photo\"}"
+
+msgid "Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."
+msgstr "JSON 或 YAML 类别提示包的路径。文件提示将覆盖内置默认值。"
+
+msgid "JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+msgstr "主题检测的 JSON 字典，例如 {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+
+msgid "Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."
+msgstr "JSON 或 YAML 主题提示包的路径。文件提示将覆盖内置默认值。"
+
+msgid "Optional hard cap on sampled frames per video"
+msgstr "每个视频采样帧数的可选硬上限"
+
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr "视频帧采样策略：基于时间或固定跳帧"
+
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr "在 'second' 模式下，每 N 秒采样一帧"
+
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr "在 'skip' 模式下，每 N 帧采样一次"
+
+msgid "Minimum ratio of solo-person frames required when using the default people-oriented video filter"
+msgstr "使用默认的人物导向视频过滤器时所需的单人帧最小比率"
+
+msgid "Minimum subject confidence required for person class before solo routing"
+msgstr "进入单人路由前人物类别所需的最小主体置信度"
+
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr "恰好一人类别的计数模型最小置信度"
+
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr "单人置信度与最优非单人置信度之间的最小差值"
+
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr "禁用宠物分类桶并将宠物媒体通过正常流程处理"
+
+msgid "Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr "在内置排序器中为已接受的人物媒体启用基于人脸的排序"
+
+msgid "Unnamed clustering or tagged identity matching"
+msgstr "未命名的人脸聚类或标记的身份匹配"
+
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr "标记模式的参考人脸目录：<dir>/<tag_name>/*.jpg"
+
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr "人脸匹配与聚类的余弦相似度阈值"
+
+msgid "Write machine-readable output records for app indexing"
+msgstr "为应用程序索引写入机器可读的输出记录"
+
+msgid "Manifest output path. Defaults under output directory"
+msgstr "清单输出路径。默认位于输出目录下"
+
+msgid "Manifest format for integration pipelines"
+msgstr "集成管道的清单格式"
+
+msgid "Enable persistent SQLite media index for app backends"
+msgstr "为应用程序后端启用持久的 SQLite 媒体索引"
+
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr "SQLite 索引数据库路径。默认位于输出目录下"
+
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr "索引模式：完整重建遍历或仅更新已变更项的遍历"
+
+msgid "When indexing, remove database entries no longer present in source"
+msgstr "索引时删除源中不再存在的数据库条目"
+
+msgid "Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."
+msgstr "导出包含冻结图像编码器、提示嵌入向量和小型运行脚本的精简应用程序包。当前最终包以图像优先。"
+
+msgid "Directory to write the finalized deployment bundle into"
+msgstr "写入最终部署包的目录"
+
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr "导出前要初始化的 Torch 设备；推荐使用 cpu"
+
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr "保存到包元数据中的最小类别置信度"
+
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr "生成的运行器中人物类别的最小主体置信度"
+
+msgid "Minimum solo confidence in the generated runner"
+msgstr "生成的运行器中的最小单人置信度"
+
+msgid "Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr "生成的运行器中单人与非单人置信度之间的最小差值"
+
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr "跳过 INT8 量化并仅保留基础 ONNX 模型"
+
+msgid "Skip generating the standalone Python runner script"
+msgstr "跳过生成独立的 Python 运行脚本"
+
+msgid "Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."
+msgstr "检查当前 Python 环境，并报告 ML、最终化及可选视频组件是否就绪。"
+
+msgid "Treat video support as part of the expected environment and report cv2 issues as actionable gaps."
+msgstr "将视频支持视为预期环境的一部分，并将 cv2 问题报告为需要处理的缺口。"
+
+msgid "Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."
+msgstr "将最终化/导出支持视为预期环境的一部分，并将 ONNX 堆栈问题报告为需要处理的缺口。"
+
+msgid "Configuration error:"
+msgstr "配置错误："
+
+msgid "Finalize error:"
+msgstr "最终化错误："
+
+msgid "Finalize complete"
+msgstr "最终化完成"
+
+msgid "Bundle:"
+msgstr "包："
+
+msgid "Model:"
+msgstr "模型："
+
+msgid "Quantized model:"
+msgstr "量化的模型："
+
+msgid "Config:"
+msgstr "配置："
+
+msgid "Embeddings:"
+msgstr "嵌入向量："
+
+msgid "Requirements:"
+msgstr "各项需求："
+
+msgid "Runner:"
+msgstr "运行程序："
+
+msgid "Runtime setup error:"
+msgstr "运行时环境设置错误："
+
+msgid "\nPython in use:"
+msgstr "\n使用中的 Python："
+
+msgid "Use interpreter-specific pip:"
+msgstr "使用特定解释器的 pip："
+
+msgid "Processing complete"
+msgstr "处理完毕"
+
+msgid "Total seen:"
+msgstr "处理总计："
+
+msgid "Images:"
+msgstr "图片："
+
+msgid "Videos:"
+msgstr "视频："
+
+msgid "Skipped (index):"
+msgstr "已跳过（索引）："
+
+msgid "Errors:"
+msgstr "错误："
+
+msgid "Counts:"
+msgstr "计数："
+
+msgid "Manifest:"
+msgstr "清单："
+
+msgid "Index DB:"
+msgstr "索引库："
+
+msgid "Indexed rows updated:"
+msgstr "已更新的索引行："
+
+msgid "Indexed rows skipped:"
+msgstr "已跳过的索引行："
+
+msgid "Index rows pruned:"
+msgstr "已清理的索引行："
+
+msgid "media-sorter environment report"
+msgstr "media-sorter 环境报告"
+
+msgid "python_executable:"
+msgstr "python_executable:"
+
+msgid "python_version:"
+msgstr "python_version:"
+
+msgid "ok ("
+msgstr "ok ("
+
+msgid "missing_or_broken ("
+msgstr "missing_or_broken ("
+
+msgid "feature_readiness:"
+msgstr "feature_readiness:"
+
+msgid "ml_backend:"
+msgstr "ml_backend:"
+
+msgid "finalize_bundle:"
+msgstr "finalize_bundle:"
+
+msgid "video_runtime:"
+msgstr "video_runtime:"
+
+msgid "recommended_checks:"
+msgstr "recommended_checks:"
+
+msgid "- environment looks healthy for the requested feature set"
+msgstr "- 环境对于所请求的功能集看起来状态良好"
+
+msgid "missing "
+msgstr "缺失 "
+
+msgid "ready (optional gaps: "
+msgstr "就绪（存在可选缺口："
+
+msgid "ready"
+msgstr "就绪"

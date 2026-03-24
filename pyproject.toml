@@ -52,6 +52,9 @@ package-dir = {"" = "src"}
 where = ["src"]
 include = ["media_sorter*"]
 
+[tool.setuptools.package-data]
+"media_sorter" = ["locales/*/*/*.mo", "locales/*/*/*.po"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

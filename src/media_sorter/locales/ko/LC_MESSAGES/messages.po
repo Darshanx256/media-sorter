@@ -1,0 +1,261 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: media-sorter\n"
+"POT-Creation-Date: 2026-03-24\n"
+"PO-Revision-Date: 2026-03-24\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyze media into structured records by default, with optional sorting workflows on top."
+msgstr "미디어를 구조화된 레코드로 분석하고 선택적으로 정렬 워크플로를 추가로 실행합니다."
+
+msgid "Source folder containing media"
+msgstr "미디어가 포함된 소스 폴더"
+
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr "정렬된 미디어 또는 분석 결과를 위한 선택적 대상 폴더"
+
+msgid "Torch device, e.g. cpu or cuda"
+msgstr "Torch 장치 (예: cpu 또는 cuda)"
+
+msgid "CLIP model name"
+msgstr "CLIP 모델 이름"
+
+msgid "Optional max number of files"
+msgstr "선택적 최대 파일 수"
+
+msgid "Minimum category confidence before the bundled sorter routes media into a category bucket"
+msgstr "내장 정렬기가 미디어를 카테고리 버킷으로 라우팅하기 전 최소 카테고리 신뢰도"
+
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr "결과 적용 방법: none (분석 전용), copy, 또는 move"
+
+msgid "Run without writing files"
+msgstr "파일 쓰기 없이 실행"
+
+msgid "JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait photo\"}"
+msgstr "카테고리 프롬프트용 JSON 딕셔너리 (예: {\"portrait\":\"a studio portrait photo\"})"
+
+msgid "Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."
+msgstr "JSON/YAML 카테고리 프롬프트 팩의 경로. 파일 프롬프트는 내장 기본값보다 우선합니다."
+
+msgid "JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+msgstr "주제 감지용 JSON 딕셔너리 (예: {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"})"
+
+msgid "Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."
+msgstr "JSON/YAML 주제 프롬프트 팩의 경로. 파일 프롬프트는 내장 기본값보다 우선합니다."
+
+msgid "Optional hard cap on sampled frames per video"
+msgstr "비디오당 샘플링 프레임의 선택적 상한선"
+
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr "비디오 프레임 샘플링 전략: 시간 기반 또는 고정 프레임 건너뛰기"
+
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr "'second' 모드에서 N초마다 한 프레임 샘플링"
+
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr "'skip' 모드에서 N번째 프레임마다 샘플링"
+
+msgid "Minimum ratio of solo-person frames required when using the default people-oriented video filter"
+msgstr "기본 인물 지향 비디오 필터 사용 시 단독 인물 프레임의 최소 비율"
+
+msgid "Minimum subject confidence required for person class before solo routing"
+msgstr "단독 라우팅 전 사람 클래스에 필요한 최소 주제 신뢰도"
+
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr "정확히 한 명 클래스에 대한 카운트 모델의 최소 신뢰도"
+
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr "단독 신뢰도와 최고 비단독 신뢰도 간의 최소 마진"
+
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr "애완동물 버킷을 비활성화하고 애완동물 미디어를 일반 흐름으로 라우팅"
+
+msgid "Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr "내장 정렬기에서 승인된 인물 미디어에 대해 얼굴 기반 정렬 활성화"
+
+msgid "Unnamed clustering or tagged identity matching"
+msgstr "이름 없는 클러스터링 또는 태그된 신원 일치"
+
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr "태그 모드용 참조 얼굴 디렉토리: <dir>/<tag_name>/*.jpg"
+
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr "얼굴 일치 및 클러스터링을 위한 코사인 유사도 임계값"
+
+msgid "Write machine-readable output records for app indexing"
+msgstr "앱 인덱싱을 위한 머신 판독 가능한 출력 레코드 기록"
+
+msgid "Manifest output path. Defaults under output directory"
+msgstr "매니페스트 출력 경로. 기본값은 출력 디렉토리 하위"
+
+msgid "Manifest format for integration pipelines"
+msgstr "통합 파이프라인용 매니페스트 형식"
+
+msgid "Enable persistent SQLite media index for app backends"
+msgstr "앱 백엔드를 위한 영구 SQLite 미디어 인덱스 활성화"
+
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr "SQLite 인덱스 데이터베이스 경로. 기본값은 출력 디렉토리 하위"
+
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr "인덱싱 모드: 전체 재구성 패스 또는 변경 사항 인식 업데이트 패스"
+
+msgid "When indexing, remove database entries no longer present in source"
+msgstr "인덱싱 시 소스에 더 이상 존재하지 않는 데이터베이스 항목 삭제"
+
+msgid "Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."
+msgstr "고정된 이미지 인코더, 프롬프트 임베딩, 소형 런타임 스크립트를 포함한 컴팩트한 앱 준비 번들을 내보냅니다. 현재 최종 번들은 이미지 우선입니다."
+
+msgid "Directory to write the finalized deployment bundle into"
+msgstr "최종 배포 번들을 저장할 디렉토리"
+
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr "내보내기 전 초기화할 Torch 장치. cpu를 권장합니다"
+
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr "번들 메타데이터에 저장되는 최소 카테고리 신뢰도"
+
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr "생성된 러너에서 사람 클래스의 최소 주제 신뢰도"
+
+msgid "Minimum solo confidence in the generated runner"
+msgstr "생성된 러너에서의 최소 단독 신뢰도"
+
+msgid "Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr "생성된 러너에서 단독 및 비단독 신뢰도 간의 최소 마진"
+
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr "INT8 양자화를 건너뛰고 기본 ONNX 모델만 유지"
+
+msgid "Skip generating the standalone Python runner script"
+msgstr "독립 실행형 Python 러너 스크립트 생성 건너뛰기"
+
+msgid "Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."
+msgstr "현재 Python 환경을 검사하고 ML, 파이널라이즈 및 선택적 비디오 구성 요소의 준비 상태를 보고합니다."
+
+msgid "Treat video support as part of the expected environment and report cv2 issues as actionable gaps."
+msgstr "비디오 지원을 예상 환경의 일부로 처리하고 cv2 문제를 해결 가능한 격차로 보고합니다."
+
+msgid "Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."
+msgstr "파이널라이즈/내보내기 지원을 예상 환경의 일부로 처리하고 ONNX 스택 문제를 해결 가능한 격차로 보고합니다."
+
+msgid "Configuration error:"
+msgstr "구성 오류:"
+
+msgid "Finalize error:"
+msgstr "파이널라이즈 오류:"
+
+msgid "Finalize complete"
+msgstr "파이널라이즈 완료"
+
+msgid "Bundle:"
+msgstr "번들:"
+
+msgid "Model:"
+msgstr "모델:"
+
+msgid "Quantized model:"
+msgstr "양자화된 모델:"
+
+msgid "Config:"
+msgstr "구성:"
+
+msgid "Embeddings:"
+msgstr "임베딩:"
+
+msgid "Requirements:"
+msgstr "요구사항:"
+
+msgid "Runner:"
+msgstr "실행기:"
+
+msgid "Runtime setup error:"
+msgstr "런타임 설정 오류:"
+
+msgid "\nPython in use:"
+msgstr "\n사용 중인 Python:"
+
+msgid "Use interpreter-specific pip:"
+msgstr "인터프리터별 pip 사용:"
+
+msgid "Processing complete"
+msgstr "처리 완료"
+
+msgid "Total seen:"
+msgstr "총 확인된 수:"
+
+msgid "Images:"
+msgstr "이미지:"
+
+msgid "Videos:"
+msgstr "비디오:"
+
+msgid "Skipped (index):"
+msgstr "건너뛴 항목 (인덱스):"
+
+msgid "Errors:"
+msgstr "오류:"
+
+msgid "Counts:"
+msgstr "개수:"
+
+msgid "Manifest:"
+msgstr "매니페스트:"
+
+msgid "Index DB:"
+msgstr "인덱스 DB:"
+
+msgid "Indexed rows updated:"
+msgstr "업데이트된 인덱스 행:"
+
+msgid "Indexed rows skipped:"
+msgstr "건너뛴 인덱스 행:"
+
+msgid "Index rows pruned:"
+msgstr "제거된 인덱스 행:"
+
+msgid "media-sorter environment report"
+msgstr "media-sorter 환경 보고서"
+
+msgid "python_executable:"
+msgstr "python_executable:"
+
+msgid "python_version:"
+msgstr "python_version:"
+
+msgid "ok ("
+msgstr "ok ("
+
+msgid "missing_or_broken ("
+msgstr "missing_or_broken ("
+
+msgid "feature_readiness:"
+msgstr "feature_readiness:"
+
+msgid "ml_backend:"
+msgstr "ml_backend:"
+
+msgid "finalize_bundle:"
+msgstr "finalize_bundle:"
+
+msgid "video_runtime:"
+msgstr "video_runtime:"
+
+msgid "recommended_checks:"
+msgstr "recommended_checks:"
+
+msgid "- environment looks healthy for the requested feature set"
+msgstr "- 요청된 기능 세트에 대해 환경이 정상적으로 보입니다"
+
+msgid "missing "
+msgstr "누락 "
+
+msgid "ready (optional gaps: "
+msgstr "준비됨 (선택적 누락: "
+
+msgid "ready"
+msgstr "준비됨"

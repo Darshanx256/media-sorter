@@ -1,0 +1,261 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: media-sorter\n"
+"POT-Creation-Date: 2026-03-24\n"
+"PO-Revision-Date: 2026-03-24\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyze media into structured records by default, with optional sorting workflows on top."
+msgstr "メディアを構造化されたレコードに分析し、オプションでソートワークフローを実行します。"
+
+msgid "Source folder containing media"
+msgstr "メディアを含むソースフォルダ"
+
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr "ソートされたメディアまたは分析結果のオプションの出力先フォルダ"
+
+msgid "Torch device, e.g. cpu or cuda"
+msgstr "Torchデバイス（例: cpu または cuda）"
+
+msgid "CLIP model name"
+msgstr "CLIPモデル名"
+
+msgid "Optional max number of files"
+msgstr "オプションの最大ファイル数"
+
+msgid "Minimum category confidence before the bundled sorter routes media into a category bucket"
+msgstr "統合ソーターがメディアをカテゴリバケットに振り分ける前の最小カテゴリ信頼度"
+
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr "結果の適用方法：none（分析のみ）、copy、または move"
+
+msgid "Run without writing files"
+msgstr "ファイルを書き込まずに実行"
+
+msgid "JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait photo\"}"
+msgstr "カテゴリプロンプト用JSON辞書（例: {\"portrait\":\"a studio portrait photo\"}）"
+
+msgid "Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."
+msgstr "JSONまたはYAMLのカテゴリプロンプトパックへのパス。ファイルのプロンプトは組み込みのデフォルトより優先されます。"
+
+msgid "JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+msgstr "対象検出用のJSON辞書（例: {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}）"
+
+msgid "Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."
+msgstr "対象検出用JSON/YAMLプロンプトパックへのパス。ファイルのプロンプトは組み込みのデフォルトより優先されます。"
+
+msgid "Optional hard cap on sampled frames per video"
+msgstr "ビデオごとにサンプリングするフレームの上限（オプション）"
+
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr "ビデオフレームのサンプリング戦略：時間ベースまたは固定フレームスキップ"
+
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr "'second' モードでN秒ごとに1フレームサンプリング"
+
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr "'skip' モードでNフレームごとに1フレームサンプリング"
+
+msgid "Minimum ratio of solo-person frames required when using the default people-oriented video filter"
+msgstr "デフォルトの人物フィルターを使用する際に必要な、1人のみのフレームの最小比率"
+
+msgid "Minimum subject confidence required for person class before solo routing"
+msgstr "個人ルーティング前に必要な人物クラスの最小被写体信頼度"
+
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr "正確に1人のクラスに対するカウントモデルの最小信頼度"
+
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr "単独信頼度と最高の非単独信頼度の間の最小マージン"
+
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr "ペットカテゴリを無効にし、ペットメディアを通常フローで処理する"
+
+msgid "Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr "統合ソーターで受理された人物メディアに対して顔ベースのソートを有効にする"
+
+msgid "Unnamed clustering or tagged identity matching"
+msgstr "無名クラスタリングまたはタグ付き識別一致"
+
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr "タグ付きモード用の参照顔ディレクトリ: <dir>/<tag_name>/*.jpg"
+
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr "顔照合・クラスタリング用のコサイン類似度しきい値"
+
+msgid "Write machine-readable output records for app indexing"
+msgstr "アプリのインデックス作成用に機械可読な出力レコードを書き込む"
+
+msgid "Manifest output path. Defaults under output directory"
+msgstr "マニフェストの出力パス。デフォルトは出力ディレクトリ以下"
+
+msgid "Manifest format for integration pipelines"
+msgstr "統合パイプライン用のマニフェストフォーマット"
+
+msgid "Enable persistent SQLite media index for app backends"
+msgstr "アプリバックエンド用の永続的なSQLiteメディアインデックスを有効にする"
+
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr "SQLiteインデックスデータベースへのパス。デフォルトは出力ディレクトリ以下"
+
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr "インデックスモード：完全再構築パスまたは変更差分更新パス"
+
+msgid "When indexing, remove database entries no longer present in source"
+msgstr "インデックス作成時に、ソースに存在しなくなったデータベースエントリを削除する"
+
+msgid "Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."
+msgstr "固定済み画像エンコーダ、プロンプト埋め込み、小型ランタイムスクリプトを含むコンパクトなアプリ用バンドルをエクスポートします。現在、最終バンドルは画像優先です。"
+
+msgid "Directory to write the finalized deployment bundle into"
+msgstr "最終デプロイメントバンドルを書き込むディレクトリ"
+
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr "エクスポート前に初期化するTorchデバイス。cpuを推奨します"
+
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr "バンドルメタデータに保存される最小カテゴリ信頼度"
+
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr "生成されたランナーにおける人物クラスの最小被写体信頼度"
+
+msgid "Minimum solo confidence in the generated runner"
+msgstr "生成されたランナーにおける単独信頼度の最小値"
+
+msgid "Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr "生成されたランナーにおける単独・非単独信頼度間の最小マージン"
+
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr "INT8量子化をスキップし、ベースONNXモデルのみを保持する"
+
+msgid "Skip generating the standalone Python runner script"
+msgstr "スタンドアロンPythonランナースクリプトの生成をスキップする"
+
+msgid "Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."
+msgstr "現在のPython環境を検査し、ML・ファイナライズ・オプションのビデオコンポーネントが準備できているか報告します。"
+
+msgid "Treat video support as part of the expected environment and report cv2 issues as actionable gaps."
+msgstr "ビデオサポートを期待される環境の一部として扱い、cv2の問題を対処すべき不足として報告します。"
+
+msgid "Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."
+msgstr "ファイナライズ/エクスポートのサポートを期待される環境の一部として扱い、ONNXスタックの問題を対処すべき不足として報告します。"
+
+msgid "Configuration error:"
+msgstr "設定エラー:"
+
+msgid "Finalize error:"
+msgstr "ファイナライズエラー:"
+
+msgid "Finalize complete"
+msgstr "ファイナライズ完了"
+
+msgid "Bundle:"
+msgstr "バンドル:"
+
+msgid "Model:"
+msgstr "モデル:"
+
+msgid "Quantized model:"
+msgstr "量子化モデル:"
+
+msgid "Config:"
+msgstr "設定:"
+
+msgid "Embeddings:"
+msgstr "埋め込み:"
+
+msgid "Requirements:"
+msgstr "要件:"
+
+msgid "Runner:"
+msgstr "ランナー:"
+
+msgid "Runtime setup error:"
+msgstr "ランタイム設定エラー:"
+
+msgid "\nPython in use:"
+msgstr "\n使用中のPython:"
+
+msgid "Use interpreter-specific pip:"
+msgstr "インタプリタ固有のpipを使用:"
+
+msgid "Processing complete"
+msgstr "処理完了"
+
+msgid "Total seen:"
+msgstr "処理総数:"
+
+msgid "Images:"
+msgstr "画像:"
+
+msgid "Videos:"
+msgstr "ビデオ:"
+
+msgid "Skipped (index):"
+msgstr "スキップ（インデックス）:"
+
+msgid "Errors:"
+msgstr "エラー:"
+
+msgid "Counts:"
+msgstr "カウント:"
+
+msgid "Manifest:"
+msgstr "マニフェスト:"
+
+msgid "Index DB:"
+msgstr "インデックス DB:"
+
+msgid "Indexed rows updated:"
+msgstr "インデックス更新行数:"
+
+msgid "Indexed rows skipped:"
+msgstr "インデックススキップ行数:"
+
+msgid "Index rows pruned:"
+msgstr "インデックス削除行数:"
+
+msgid "media-sorter environment report"
+msgstr "media-sorter 環境レポート"
+
+msgid "python_executable:"
+msgstr "python_executable:"
+
+msgid "python_version:"
+msgstr "python_version:"
+
+msgid "ok ("
+msgstr "ok ("
+
+msgid "missing_or_broken ("
+msgstr "missing_or_broken ("
+
+msgid "feature_readiness:"
+msgstr "feature_readiness:"
+
+msgid "ml_backend:"
+msgstr "ml_backend:"
+
+msgid "finalize_bundle:"
+msgstr "finalize_bundle:"
+
+msgid "video_runtime:"
+msgstr "video_runtime:"
+
+msgid "recommended_checks:"
+msgstr "recommended_checks:"
+
+msgid "- environment looks healthy for the requested feature set"
+msgstr "- 環境は要求された機能セットに対して正常な状態です"
+
+msgid "missing "
+msgstr "不足 "
+
+msgid "ready (optional gaps: "
+msgstr "準備完了（オプションの不足: "
+
+msgid "ready"
+msgstr "準備完了"

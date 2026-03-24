@@ -1,0 +1,382 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-24 09:46+0530\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/media_sorter/cli.py:16
+msgid ""
+"Analyze media into structured records by default, with optional sorting "
+"workflows on top."
+msgstr ""
+
+#: src/media_sorter/cli.py:18
+msgid "Source folder containing media"
+msgstr ""
+
+#: src/media_sorter/cli.py:23
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr ""
+
+#: src/media_sorter/cli.py:25
+msgid "Torch device, e.g. cpu or cuda"
+msgstr ""
+
+#: src/media_sorter/cli.py:26 src/media_sorter/cli.py:183
+msgid "CLIP model name"
+msgstr ""
+
+#: src/media_sorter/cli.py:27
+msgid "Optional max number of files"
+msgstr ""
+
+#: src/media_sorter/cli.py:32
+msgid ""
+"Minimum category confidence before the bundled sorter routes media into a "
+"category bucket"
+msgstr ""
+
+#: src/media_sorter/cli.py:38
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr ""
+
+#: src/media_sorter/cli.py:40
+msgid "Run without writing files"
+msgstr ""
+
+#: src/media_sorter/cli.py:44 src/media_sorter/cli.py:187
+msgid ""
+"JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait "
+"photo\"}"
+msgstr ""
+
+#: src/media_sorter/cli.py:49 src/media_sorter/cli.py:192
+msgid ""
+"Path to a JSON or YAML category prompt pack. File prompts override built-in "
+"defaults."
+msgstr ""
+
+#: src/media_sorter/cli.py:54 src/media_sorter/cli.py:197
+msgid ""
+"JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a "
+"pet\",\"other\":\"other\"}"
+msgstr ""
+
+#: src/media_sorter/cli.py:59 src/media_sorter/cli.py:202
+msgid ""
+"Path to a JSON or YAML subject prompt pack. File prompts override built-in "
+"defaults."
+msgstr ""
+
+#: src/media_sorter/cli.py:65
+msgid "Optional hard cap on sampled frames per video"
+msgstr ""
+
+#: src/media_sorter/cli.py:71
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr ""
+
+#: src/media_sorter/cli.py:77
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr ""
+
+#: src/media_sorter/cli.py:83
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr ""
+
+#: src/media_sorter/cli.py:89
+msgid ""
+"Minimum ratio of solo-person frames required when using the default people-"
+"oriented video filter"
+msgstr ""
+
+#: src/media_sorter/cli.py:95
+msgid ""
+"Minimum subject confidence required for person class before solo routing"
+msgstr ""
+
+#: src/media_sorter/cli.py:101
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr ""
+
+#: src/media_sorter/cli.py:107
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr ""
+
+#: src/media_sorter/cli.py:112
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr ""
+
+#: src/media_sorter/cli.py:117
+msgid ""
+"Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr ""
+
+#: src/media_sorter/cli.py:123
+msgid "Unnamed clustering or tagged identity matching"
+msgstr ""
+
+#: src/media_sorter/cli.py:128
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr ""
+
+#: src/media_sorter/cli.py:134
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr ""
+
+#: src/media_sorter/cli.py:139
+msgid "Write machine-readable output records for app indexing"
+msgstr ""
+
+#: src/media_sorter/cli.py:144
+msgid "Manifest output path. Defaults under output directory"
+msgstr ""
+
+#: src/media_sorter/cli.py:150
+msgid "Manifest format for integration pipelines"
+msgstr ""
+
+#: src/media_sorter/cli.py:155
+msgid "Enable persistent SQLite media index for app backends"
+msgstr ""
+
+#: src/media_sorter/cli.py:160
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr ""
+
+#: src/media_sorter/cli.py:166
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr ""
+
+#: src/media_sorter/cli.py:171
+msgid "When indexing, remove database entries no longer present in source"
+msgstr ""
+
+#: src/media_sorter/cli.py:179
+msgid ""
+"Export a compact app-ready bundle with a frozen image encoder, prompt "
+"embeddings, and a tiny runtime script. Finalized bundles are image-first "
+"today."
+msgstr ""
+
+#: src/media_sorter/cli.py:181
+msgid "Directory to write the finalized deployment bundle into"
+msgstr ""
+
+#: src/media_sorter/cli.py:182
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr ""
+
+#: src/media_sorter/cli.py:208
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr ""
+
+#: src/media_sorter/cli.py:214
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr ""
+
+#: src/media_sorter/cli.py:220
+msgid "Minimum solo confidence in the generated runner"
+msgstr ""
+
+#: src/media_sorter/cli.py:226
+msgid ""
+"Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr ""
+
+#: src/media_sorter/cli.py:231
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr ""
+
+#: src/media_sorter/cli.py:236
+msgid "Skip generating the standalone Python runner script"
+msgstr ""
+
+#: src/media_sorter/cli.py:244
+msgid ""
+"Inspect the current Python environment and report whether ML, finalize, and "
+"optional video pieces look ready."
+msgstr ""
+
+#: src/media_sorter/cli.py:249
+msgid ""
+"Treat video support as part of the expected environment and report cv2 "
+"issues as actionable gaps."
+msgstr ""
+
+#: src/media_sorter/cli.py:254
+msgid ""
+"Treat finalize/export support as part of the expected environment and report "
+"ONNX stack issues as actionable gaps."
+msgstr ""
+
+#: src/media_sorter/cli.py:285 src/media_sorter/cli.py:366
+msgid "Configuration error:"
+msgstr ""
+
+#: src/media_sorter/cli.py:288
+msgid "Finalize error:"
+msgstr ""
+
+#: src/media_sorter/cli.py:291
+msgid "Finalize complete"
+msgstr ""
+
+#: src/media_sorter/cli.py:292
+msgid "Bundle:"
+msgstr ""
+
+#: src/media_sorter/cli.py:293
+msgid "Model:"
+msgstr ""
+
+#: src/media_sorter/cli.py:295
+msgid "Quantized model:"
+msgstr ""
+
+#: src/media_sorter/cli.py:296
+msgid "Config:"
+msgstr ""
+
+#: src/media_sorter/cli.py:297
+msgid "Embeddings:"
+msgstr ""
+
+#: src/media_sorter/cli.py:298
+msgid "Requirements:"
+msgstr ""
+
+#: src/media_sorter/cli.py:300
+msgid "Runner:"
+msgstr ""
+
+#: src/media_sorter/cli.py:369
+msgid "Runtime setup error:"
+msgstr ""
+
+#: src/media_sorter/cli.py:370
+msgid ""
+"\n"
+"Python in use:"
+msgstr ""
+
+#: src/media_sorter/cli.py:372
+msgid "Use interpreter-specific pip:"
+msgstr ""
+
+#: src/media_sorter/cli.py:377
+msgid "Processing complete"
+msgstr ""
+
+#: src/media_sorter/cli.py:378
+msgid "Total seen:"
+msgstr ""
+
+#: src/media_sorter/cli.py:379
+msgid "Images:"
+msgstr ""
+
+#: src/media_sorter/cli.py:380
+msgid "Videos:"
+msgstr ""
+
+#: src/media_sorter/cli.py:381
+msgid "Skipped (index):"
+msgstr ""
+
+#: src/media_sorter/cli.py:382
+msgid "Errors:"
+msgstr ""
+
+#: src/media_sorter/cli.py:383
+msgid "Counts:"
+msgstr ""
+
+#: src/media_sorter/cli.py:387
+msgid "Manifest:"
+msgstr ""
+
+#: src/media_sorter/cli.py:389
+msgid "Index DB:"
+msgstr ""
+
+#: src/media_sorter/cli.py:390
+msgid "Indexed rows updated:"
+msgstr ""
+
+#: src/media_sorter/cli.py:391
+msgid "Indexed rows skipped:"
+msgstr ""
+
+#: src/media_sorter/cli.py:393
+msgid "Index rows pruned:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:64
+msgid "media-sorter environment report"
+msgstr ""
+
+#: src/media_sorter/doctor.py:65
+msgid "python_executable:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:66
+msgid "python_version:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:73
+msgid "ok ("
+msgstr ""
+
+#: src/media_sorter/doctor.py:75
+msgid "missing_or_broken ("
+msgstr ""
+
+#: src/media_sorter/doctor.py:77
+msgid "feature_readiness:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:79
+msgid "ml_backend:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:82
+msgid "finalize_bundle:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:84
+msgid "video_runtime:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:86 src/media_sorter/doctor.py:91
+msgid "recommended_checks:"
+msgstr ""
+
+#: src/media_sorter/doctor.py:92
+msgid "- environment looks healthy for the requested feature set"
+msgstr ""
+
+#: src/media_sorter/doctor.py:116
+msgid "missing "
+msgstr ""
+
+#: src/media_sorter/doctor.py:119
+msgid "ready (optional gaps: "
+msgstr ""
+
+#: src/media_sorter/doctor.py:120
+msgid "ready"
+msgstr ""

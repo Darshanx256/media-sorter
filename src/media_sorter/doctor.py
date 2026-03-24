@@ -6,6 +6,8 @@ import importlib
 import importlib.util
 import sys
 
+from .i18n import _
+
 
 @dataclass(slots=True)
 class DependencyStatus:
@@ -59,35 +61,35 @@ def render_doctor_report(*, expect_video: bool = False, expect_finalize: bool = 
     by_name = {status.name: status for status in statuses}
 
     lines = [
-        "media-sorter environment report",
-        f"python_executable: {sys.executable}",
-        f"python_version: {sys.version.split()[0]}",
+        _("media-sorter environment report"),
+        _("python_executable:") + f" {sys.executable}",
+        _("python_version:") + f" {sys.version.split()[0]}",
         "",
     ]
 
     for status in statuses:
         if status.ok:
             version = status.version or "unknown"
-            lines.append(f"{status.name}: ok ({version})")
+            lines.append(f"{status.name}: " + _("ok (") + f"{version})")
         else:
-            lines.append(f"{status.name}: missing_or_broken ({status.detail})")
+            lines.append(f"{status.name}: " + _("missing_or_broken (") + f"{status.detail})")
 
-    lines.extend(["", "feature_readiness:"])
+    lines.extend(["", _("feature_readiness:")])
     lines.append(
-        f"ml_backend: {_feature_status(by_name, ('torch', 'open_clip'), optional=('clip',))}"
+        _("ml_backend:") + f" {_feature_status(by_name, ('torch', 'open_clip'), optional=('clip',))}"
     )
     lines.append(
-        f"finalize_bundle: {_feature_status(by_name, ('torch', 'open_clip', 'onnx', 'onnxruntime', 'onnxscript'))}"
+        _("finalize_bundle:") + f" {_feature_status(by_name, ('torch', 'open_clip', 'onnx', 'onnxruntime', 'onnxscript'))}"
     )
-    lines.append(f"video_runtime: {_feature_status(by_name, ('cv2',))}")
+    lines.append(_("video_runtime:") + f" {_feature_status(by_name, ('cv2',))}")
 
-    lines.extend(["", "recommended_checks:"])
+    lines.extend(["", _("recommended_checks:")])
     for module_name in _recommended_modules(expect_video=expect_video, expect_finalize=expect_finalize):
         status = by_name[module_name]
         if not status.ok:
             lines.append(f"- {module_name}: {status.install_hint}")
-    if lines[-1] == "recommended_checks:":
-        lines.append("- environment looks healthy for the requested feature set")
+    if lines[-1] == _("recommended_checks:"):
+        lines.append(_("- environment looks healthy for the requested feature set"))
 
     return "\n".join(lines) + "\n"
 
@@ -111,11 +113,11 @@ def _feature_status(
 ) -> str:
     missing_required = [name for name in required if not statuses[name].ok]
     if missing_required:
-        return "missing " + ", ".join(missing_required)
+        return _("missing ") + ", ".join(missing_required)
     missing_optional = [name for name in optional if not statuses[name].ok]
     if missing_optional:
-        return "ready (optional gaps: " + ", ".join(missing_optional) + ")"
-    return "ready"
+        return _("ready (optional gaps: ") + ", ".join(missing_optional) + ")"
+    return _("ready")
 
 
 def _recommended_modules(*, expect_video: bool, expect_finalize: bool) -> list[str]:

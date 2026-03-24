@@ -1,0 +1,261 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: media-sorter\n"
+"POT-Creation-Date: 2026-03-24\n"
+"PO-Revision-Date: 2026-03-24\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyze media into structured records by default, with optional sorting workflows on top."
+msgstr "Analysiert Medien standardmäßig in strukturierte Datensätze, mit optionalen Sortier-Workflows obendrauf."
+
+msgid "Source folder containing media"
+msgstr "Quellordner mit Medien"
+
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr "Optionaler Zielordner für sortierte Medien"
+
+msgid "Torch device, e.g. cpu or cuda"
+msgstr "Torch-Gerät, z. B. cpu oder cuda"
+
+msgid "CLIP model name"
+msgstr "CLIP-Modellname"
+
+msgid "Optional max number of files"
+msgstr "Optionale maximale Anzahl von Dateien"
+
+msgid "Minimum category confidence before the bundled sorter routes media into a category bucket"
+msgstr "Minimale Kategorie-Konfidenz, bevor der integrierte Sortierer Medien in einen Kategorie-Bucket weiterleitet"
+
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr "Anwendung der Ergebnisse: none (nur Analyse), copy oder move"
+
+msgid "Run without writing files"
+msgstr "Ausführen, ohne Dateien zu schreiben"
+
+msgid "JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait photo\"}"
+msgstr "JSON-Dict für Kategorie-Prompts, z. B. {\"portrait\":\"a studio portrait photo\"}"
+
+msgid "Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."
+msgstr "Pfad zu einem JSON- oder YAML-Kategorie-Prompt-Paket. Datei-Prompts überschreiben die integrierten Standardwerte."
+
+msgid "JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+msgstr "JSON-Dict für Motiverkennung, z. B. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+
+msgid "Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."
+msgstr "Pfad zu einem JSON- oder YAML-Motiv-Prompt-Paket. Datei-Prompts überschreiben die integrierten Standardwerte."
+
+msgid "Optional hard cap on sampled frames per video"
+msgstr "Optionale Obergrenze für abgetastete Bilder pro Video"
+
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr "Strategie für Video-Frames"
+
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr "Im Modus 'second' ein Bild alle N Sekunden abtasten"
+
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr "Im Modus 'skip' jedes N-te Bild abtasten"
+
+msgid "Minimum ratio of solo-person frames required when using the default people-oriented video filter"
+msgstr "Mindestverhältnis von Einzelpersonen-Frames beim Standard-Personenfilter für Videos"
+
+msgid "Minimum subject confidence required for person class before solo routing"
+msgstr "Minimale Motivkonfidenz für die Personenklasse vor der Einzelpersonen-Weiterleitung"
+
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr "Minimale Konfidenz für genau-eine-Person-Klasse"
+
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr "Mindestabstand zwischen Einzel- und Nicht-Einzelkonfidenz"
+
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr "Haustierkategorie deaktivieren und Haustiermedien durch den normalen Ablauf leiten"
+
+msgid "Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr "Gesichtsbasierte Sortierung für akzeptierte Personenmedien im integrierten Sortierer aktivieren"
+
+msgid "Unnamed clustering or tagged identity matching"
+msgstr "Unbenannte Clusterbildung oder getaggtes Identitätsmatching"
+
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr "Verzeichnis mit Referenzgesichtern: <dir>/<tag>/*.jpg"
+
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr "Kosinus-Ähnlichkeitsschwellenwert für Gesichtsabgleich"
+
+msgid "Write machine-readable output records for app indexing"
+msgstr "Maschinenlesbare Ausgabedatensätze schreiben"
+
+msgid "Manifest output path. Defaults under output directory"
+msgstr "Manifest-Ausgabepfad. Standard: im Ausgabeverzeichnis"
+
+msgid "Manifest format for integration pipelines"
+msgstr "Manifestformat für Integrationspipelines"
+
+msgid "Enable persistent SQLite media index for app backends"
+msgstr "SQLite-Medienindex aktivieren"
+
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr "Pfad zur SQLite-Indexdatenbank"
+
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr "Indexierungsmodus: vollständiger Neuaufbau oder aktualisierungsbasierter Durchlauf"
+
+msgid "When indexing, remove database entries no longer present in source"
+msgstr "Beim Indexieren fehlende Einträge entfernen"
+
+msgid "Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."
+msgstr "Exportiert ein kompaktes, App-bereites Bundle mit gefrorenem Bild-Encoder, Prompt-Embeddings und einem kleinen Laufzeit-Skript. Finalisierte Bundles sind derzeit bildorientiert."
+
+msgid "Directory to write the finalized deployment bundle into"
+msgstr "Verzeichnis für das finale Deployment-Bundle"
+
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr "Torch-Gerät zur Initialisierung; cpu wird empfohlen"
+
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr "Minimale Kategorie-Konfidenz, gespeichert im Bundle"
+
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr "Minimale Motiv-Konfidenz für Personen im Runner"
+
+msgid "Minimum solo confidence in the generated runner"
+msgstr "Minimale Einzel-Konfidenz im Runner"
+
+msgid "Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr "Minimale Marge zwischen Einzel- und Nicht-Einzel-Konfidenz"
+
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr "INT8-Quantisierung überspringen und nur das Basis-ONNX-Modell behalten"
+
+msgid "Skip generating the standalone Python runner script"
+msgstr "Generierung des eigenständigen Python-Runner-Skripts überspringen"
+
+msgid "Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."
+msgstr "Aktuelle Python-Umgebung prüfen und melden, ob ML, Finalisierung und optionale Video-Komponenten bereit sind."
+
+msgid "Treat video support as part of the expected environment and report cv2 issues as actionable gaps."
+msgstr "Video-Unterstützung als Teil der erwarteten Umgebung behandeln und cv2-Probleme als behebbare Lücken melden."
+
+msgid "Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."
+msgstr "Finalisierungs-/Export-Unterstützung als Teil der erwarteten Umgebung behandeln und ONNX-Stack-Probleme als behebbare Lücken melden."
+
+msgid "Configuration error:"
+msgstr "Konfigurationsfehler:"
+
+msgid "Finalize error:"
+msgstr "Finalisierungsfehler:"
+
+msgid "Finalize complete"
+msgstr "Finalisierung abgeschlossen"
+
+msgid "Bundle:"
+msgstr "Bundle:"
+
+msgid "Model:"
+msgstr "Modell:"
+
+msgid "Quantized model:"
+msgstr "Quantisiertes Modell:"
+
+msgid "Config:"
+msgstr "Konfig:"
+
+msgid "Embeddings:"
+msgstr "Embeddings:"
+
+msgid "Requirements:"
+msgstr "Anforderungen:"
+
+msgid "Runner:"
+msgstr "Runner:"
+
+msgid "Runtime setup error:"
+msgstr "Laufzeit-Setup-Fehler:"
+
+msgid "\nPython in use:"
+msgstr "\nVerwendetes Python:"
+
+msgid "Use interpreter-specific pip:"
+msgstr "Verwenden Sie interpreter-spezifisches pip:"
+
+msgid "Processing complete"
+msgstr "Verarbeitung abgeschlossen"
+
+msgid "Total seen:"
+msgstr "Gesamt gesehen:"
+
+msgid "Images:"
+msgstr "Bilder:"
+
+msgid "Videos:"
+msgstr "Videos:"
+
+msgid "Skipped (index):"
+msgstr "Übersprungen (Index):"
+
+msgid "Errors:"
+msgstr "Fehler:"
+
+msgid "Counts:"
+msgstr "Anzahl:"
+
+msgid "Manifest:"
+msgstr "Manifest:"
+
+msgid "Index DB:"
+msgstr "Index-DB:"
+
+msgid "Indexed rows updated:"
+msgstr "Indexierte Zeilen aktualisiert:"
+
+msgid "Indexed rows skipped:"
+msgstr "Indexierte Zeilen übersprungen:"
+
+msgid "Index rows pruned:"
+msgstr "Indexierte Zeilen entfernt:"
+
+msgid "media-sorter environment report"
+msgstr "media-sorter Umgebungsbericht"
+
+msgid "python_executable:"
+msgstr "python_executable:"
+
+msgid "python_version:"
+msgstr "python_version:"
+
+msgid "ok ("
+msgstr "ok ("
+
+msgid "missing_or_broken ("
+msgstr "missing_or_broken ("
+
+msgid "feature_readiness:"
+msgstr "feature_readiness:"
+
+msgid "ml_backend:"
+msgstr "ml_backend:"
+
+msgid "finalize_bundle:"
+msgstr "finalize_bundle:"
+
+msgid "video_runtime:"
+msgstr "video_runtime:"
+
+msgid "recommended_checks:"
+msgstr "recommended_checks:"
+
+msgid "- environment looks healthy for the requested feature set"
+msgstr "- Umgebung sieht für erforderliche Funktionen gesund aus"
+
+msgid "missing "
+msgstr "fehlend "
+
+msgid "ready (optional gaps: "
+msgstr "bereit (optionale Lücken: "
+
+msgid "ready"
+msgstr "bereit"

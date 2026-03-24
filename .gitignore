@@ -24,3 +24,5 @@ sorted/
 image_captions.txt
 tmp_bundle/
 tmp_bundle_smoke.jpg
+.gemini/
+*.mo

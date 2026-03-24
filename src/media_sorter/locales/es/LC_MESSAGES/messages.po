@@ -1,0 +1,261 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: media-sorter\n"
+"POT-Creation-Date: 2026-03-24\n"
+"PO-Revision-Date: 2026-03-24\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyze media into structured records by default, with optional sorting workflows on top."
+msgstr "Analice medios en registros estructurados por defecto, con flujos de trabajo de clasificación opcionales."
+
+msgid "Source folder containing media"
+msgstr "Carpeta de origen que contiene los medios"
+
+msgid "Optional destination folder for sorted media or analysis artifacts"
+msgstr "Carpeta de destino opcional para medios clasificados o artefactos de análisis"
+
+msgid "Torch device, e.g. cpu or cuda"
+msgstr "Dispositivo Torch, ej. cpu o cuda"
+
+msgid "CLIP model name"
+msgstr "Nombre del modelo CLIP"
+
+msgid "Optional max number of files"
+msgstr "Número máximo de archivos opcional"
+
+msgid "Minimum category confidence before the bundled sorter routes media into a category bucket"
+msgstr "Confianza mínima de categoría antes de que el clasificador envíe los medios a un cubo de categoría"
+
+msgid "How to apply results: none (analysis only), copy, or move"
+msgstr "Cómo aplicar resultados: none (solo análisis), copy o move"
+
+msgid "Run without writing files"
+msgstr "Ejecutar sin escribir archivos"
+
+msgid "JSON dict for category prompts, e.g. {\"portrait\":\"a studio portrait photo\"}"
+msgstr "Diccionario JSON para prompts de categoría, ej. {\"portrait\":\"una foto de estudio\"}"
+
+msgid "Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."
+msgstr "Ruta a un paquete JSON o YAML de prompts de categoría. Sobrescribe los predeterminados."
+
+msgid "JSON dict for subject detection, e.g. {\"person\":\"a person\",\"pet\":\"a pet\",\"other\":\"other\"}"
+msgstr "Diccionario JSON para detección de sujetos, ej. {\"person\":\"una persona\",\"pet\":\"una mascota\",\"other\":\"otro\"}"
+
+msgid "Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."
+msgstr "Ruta a un paquete JSON o YAML de prompts de sujeto. Sobrescribe predeterminados."
+
+msgid "Optional hard cap on sampled frames per video"
+msgstr "Límite opcional de fotogramas muestreados por video"
+
+msgid "Video frame sampling strategy: time-based or fixed frame skip"
+msgstr "Estrategia de muestreo por video: basado en tiempo o salto fijo"
+
+msgid "In 'second' mode, sample one frame every N seconds"
+msgstr "En modo 'second', muestrear un fotograma cada N segundos"
+
+msgid "In 'skip' mode, sample every Nth frame"
+msgstr "En modo 'skip', muestrear cada N fotogramas"
+
+msgid "Minimum ratio of solo-person frames required when using the default people-oriented video filter"
+msgstr "Proporción mínima de fotogramas de persona sola requerida en el filtro predeterminado de video orientado a personas"
+
+msgid "Minimum subject confidence required for person class before solo routing"
+msgstr "Confianza mínima de sujeto requerida para clase persona antes del enrutamiento individual"
+
+msgid "Minimum count-model confidence for exactly-one-person class"
+msgstr "Confianza mínima en el modelo de conteo para clase de exactamente una persona"
+
+msgid "Minimum margin between solo confidence and best non-solo confidence"
+msgstr "Margen mínimo entre la confianza individual y la mejor no individual"
+
+msgid "Disable pet bucket and route pet media through normal flow"
+msgstr "Deshabilitar clasificación de mascotas y enviar por flujo normal"
+
+msgid "Enable face-based sorting for accepted person media in the bundled sorter"
+msgstr "Habilitar clasificación basada en rostros para medios de persona aceptados en el clasificador integrado"
+
+msgid "Unnamed clustering or tagged identity matching"
+msgstr "Agrupamiento sin nombre o coincidencia de identidad etiquetada"
+
+msgid "Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"
+msgstr "Directorio con rostros de referencia para modo etiquetado: <dir>/<etiqueta>/*.jpg"
+
+msgid "Cosine similarity threshold for face matching/clustering"
+msgstr "Umbral de similitud coseno para coincidencia de rostros"
+
+msgid "Write machine-readable output records for app indexing"
+msgstr "Escribir registros legibles por máquina para indexación de aplicaciones"
+
+msgid "Manifest output path. Defaults under output directory"
+msgstr "Ruta del manifiesto. Por defecto en el directorio de salida"
+
+msgid "Manifest format for integration pipelines"
+msgstr "Formato de manifiesto para canales de integración"
+
+msgid "Enable persistent SQLite media index for app backends"
+msgstr "Habilitar índice SQLite de medios para backends de aplicación"
+
+msgid "Path to SQLite index database. Defaults under output directory"
+msgstr "Ruta a la base de datos SQLite. Por defecto en el directorio de salida"
+
+msgid "Indexing mode: full rebuild pass or update unchanged-aware pass"
+msgstr "Modo de indexación: pasada completa o pasada de actualización"
+
+msgid "When indexing, remove database entries no longer present in source"
+msgstr "Al indexar, eliminar entradas que ya no están en el origen"
+
+msgid "Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."
+msgstr "Exportar un paquete compacto listo para app con codificador de imagen congelado, incrustaciones de prompt y script de ejecución. Los paquetes finalizados priorizan imágenes actualmente."
+
+msgid "Directory to write the finalized deployment bundle into"
+msgstr "Directorio para escribir el paquete de implementación finalizado"
+
+msgid "Torch device to initialize before export; cpu is recommended"
+msgstr "Dispositivo Torch a inicializar antes de exportar; se recomienda cpu"
+
+msgid "Minimum category confidence saved into the bundle metadata"
+msgstr "Confianza de categoría mínima guardada en metadatos del paquete"
+
+msgid "Minimum subject confidence for person class in the generated runner"
+msgstr "Confianza mínima de sujeto para la clase persona en el ejecutor generado"
+
+msgid "Minimum solo confidence in the generated runner"
+msgstr "Confianza mínima individual en el ejecutor generado"
+
+msgid "Minimum margin between solo and non-solo confidence in the generated runner"
+msgstr "Margen mínimo entre confianza individual y no individual en el ejecutor generado"
+
+msgid "Skip INT8 quantization and keep only the base ONNX model"
+msgstr "Omitir cuantización INT8 y mantener solo el modelo ONNX base"
+
+msgid "Skip generating the standalone Python runner script"
+msgstr "Omitir la generación del script de ejecución Python independiente"
+
+msgid "Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."
+msgstr "Inspeccionar el entorno Python actual y reportar si los componentes de ML, finalización y video opcionales están listos."
+
+msgid "Treat video support as part of the expected environment and report cv2 issues as actionable gaps."
+msgstr "Tratar el soporte de video como parte del entorno esperado y reportar problemas de cv2 como brechas a resolver."
+
+msgid "Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."
+msgstr "Tratar el soporte de finalización/exportación como parte del entorno esperado y reportar problemas del stack ONNX como brechas a resolver."
+
+msgid "Configuration error:"
+msgstr "Error de configuración:"
+
+msgid "Finalize error:"
+msgstr "Error de finalización:"
+
+msgid "Finalize complete"
+msgstr "Finalización completa"
+
+msgid "Bundle:"
+msgstr "Paquete:"
+
+msgid "Model:"
+msgstr "Modelo:"
+
+msgid "Quantized model:"
+msgstr "Modelo cuantizado:"
+
+msgid "Config:"
+msgstr "Configuración:"
+
+msgid "Embeddings:"
+msgstr "Incrustaciones:"
+
+msgid "Requirements:"
+msgstr "Requisitos:"
+
+msgid "Runner:"
+msgstr "Ejecutor:"
+
+msgid "Runtime setup error:"
+msgstr "Error de configuración de ejecución:"
+
+msgid "\nPython in use:"
+msgstr "\nPython en uso:"
+
+msgid "Use interpreter-specific pip:"
+msgstr "Utilice pip específico del intérprete:"
+
+msgid "Processing complete"
+msgstr "Procesamiento completo"
+
+msgid "Total seen:"
+msgstr "Total vistos:"
+
+msgid "Images:"
+msgstr "Imágenes:"
+
+msgid "Videos:"
+msgstr "Videos:"
+
+msgid "Skipped (index):"
+msgstr "Omitidos (índice):"
+
+msgid "Errors:"
+msgstr "Errores:"
+
+msgid "Counts:"
+msgstr "Conteos:"
+
+msgid "Manifest:"
+msgstr "Manifiesto:"
+
+msgid "Index DB:"
+msgstr "Base de datos índice:"
+
+msgid "Indexed rows updated:"
+msgstr "Filas indexadas actualizadas:"
+
+msgid "Indexed rows skipped:"
+msgstr "Filas indexadas omitidas:"
+
+msgid "Index rows pruned:"
+msgstr "Filas del índice reducidas:"
+
+msgid "media-sorter environment report"
+msgstr "Informe de entorno de media-sorter"
+
+msgid "python_executable:"
+msgstr "python_executable:"
+
+msgid "python_version:"
+msgstr "python_version:"
+
+msgid "ok ("
+msgstr "ok ("
+
+msgid "missing_or_broken ("
+msgstr "missing_or_broken ("
+
+msgid "feature_readiness:"
+msgstr "feature_readiness:"
+
+msgid "ml_backend:"
+msgstr "ml_backend:"
+
+msgid "finalize_bundle:"
+msgstr "finalize_bundle:"
+
+msgid "video_runtime:"
+msgstr "video_runtime:"
+
+msgid "recommended_checks:"
+msgstr "recommended_checks:"
+
+msgid "- environment looks healthy for the requested feature set"
+msgstr "- el entorno parece saludable para las funciones solicitadas"
+
+msgid "missing "
+msgstr "falta "
+
+msgid "ready (optional gaps: "
+msgstr "listo (vacíos opcionales: "
+
+msgid "ready"
+msgstr "listo"
