@@ -178,8 +178,16 @@ class BundleFinalizer:
         fallback_model = runtime.get("fallback_model")
         embeddings_file = runtime.get("embeddings_file")
 
-        if not primary_model or not (artifacts.bundle_dir / str(primary_model)).exists():
-            errors.append("Primary model path in config.json does not exist")
+        if not primary_model:
+            errors.append("Primary model path missing from config.json")
+        elif not (artifacts.bundle_dir / str(primary_model)).exists():
+            # The runner falls back to fallback_model automatically, so only
+            # raise an error when the fallback is also absent.
+            if not fallback_model or not (artifacts.bundle_dir / str(fallback_model)).exists():
+                errors.append(
+                    "Neither primary nor fallback model exists in bundle "
+                    f"(primary={primary_model}, fallback={fallback_model})"
+                )
         if not fallback_model or not (artifacts.bundle_dir / str(fallback_model)).exists():
             errors.append("Fallback model path in config.json does not exist")
         if not embeddings_file or not (artifacts.bundle_dir / str(embeddings_file)).exists():

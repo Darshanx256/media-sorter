@@ -156,10 +156,14 @@ class IndexStore:
         self.conn.commit()
 
     def prune_missing(self, source_paths: set[str]) -> int:
+        """Remove index rows whose source paths are no longer present in the scan.
+
+        If *source_paths* is empty (no media was found / processed this run),
+        nothing is pruned. Deleting the entire table when nothing was scanned
+        would silently destroy all previously indexed data.
+        """
         if not source_paths:
-            deleted = self.conn.execute("DELETE FROM media_index").rowcount
-            self.conn.commit()
-            return int(deleted)
+            return 0
 
         placeholders = ",".join(["?"] * len(source_paths))
         deleted = self.conn.execute(

@@ -14,12 +14,12 @@ prompt_choice() {
   echo "${value}" | tr '[:upper:]' '[:lower:]'
 }
 
-echo "Step 1/3: Installing lite (base) requirements..."
+echo "Step 1/4: Installing lite (base) requirements..."
 run_pip install -e .
 echo "Lite install complete."
 
 echo
-echo "Step 2/3: Optional ML backend"
+echo "Step 2/4: Optional ML backend"
 echo "Choose one:"
 echo "  [none] Skip ML dependencies"
 echo "  [cpu]  Install CPU-only torch + open-clip-torch"
@@ -36,12 +36,19 @@ case "${ml_choice}" in
     echo "CPU ML dependencies installed."
     ;;
   gpu)
-    echo "Paste your torch GPU install command from pytorch.org/get-started/locally."
-    read -r -p "Torch GPU command: " torch_gpu_cmd
-    if [[ -z "${torch_gpu_cmd}" ]]; then
-      echo "No command provided. Skipping GPU torch install."
+    echo "Enter the PyTorch index URL for your CUDA version."
+    echo "Example (CUDA 12.1): https://download.pytorch.org/whl/cu121"
+    echo "Find yours at: https://pytorch.org/get-started/locally/"
+    read -r -p "PyTorch index URL: " torch_index_url
+
+    # Validate: must be a non-empty https:// URL pointing to download.pytorch.org
+    if [[ -z "${torch_index_url}" ]]; then
+      echo "No URL provided. Skipping GPU torch install."
+    elif [[ "${torch_index_url}" != https://download.pytorch.org/* ]]; then
+      echo "Error: URL must start with 'https://download.pytorch.org/'."
+      echo "Skipping GPU torch install for safety."
     else
-      eval "${torch_gpu_cmd}"
+      run_pip install torch --index-url "${torch_index_url}"
       run_pip install open-clip-torch
       echo "GPU ML dependencies installed."
     fi

@@ -512,6 +512,11 @@ class MediaAnalyzer:
         category = max(category_scores, key=category_scores.get) if category_scores else None
         category_confidence = float(category_scores[category]) if category is not None else 0.0
 
+        # Use the averaged CLIP softmax probability for the solo class so that
+        # solo_confidence carries the same unit as the image path (probability,
+        # not frame ratio). solo_ratio is implicitly captured via is_solo_person.
+        solo_confidence = float(count_scores.get(self.config.count_labels[0], 0.0)) if count_scores else 0.0
+
         return Prediction(
             file_path=file_path,
             subject=subject,
@@ -519,7 +524,7 @@ class MediaAnalyzer:
             subject_scores=subject_scores,
             is_solo_person=is_solo,
             solo_label=solo_label,
-            solo_confidence=solo_ratio,
+            solo_confidence=solo_confidence,
             count_scores=count_scores,
             category=category,
             category_confidence=category_confidence,
@@ -535,19 +540,9 @@ class MediaAnalyzer:
         return {label: float(np.mean(scores)) for label, scores in aggregate.items()}
 
     def _write_manifest(self) -> Path:
-        default_name = "manifest.json" if self.config.manifest_format == "json" else "manifest.jsonl"
-        manifest_path = self.config.manifest_path or (self._artifact_root() / default_name)
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if self.config.manifest_format == "json":
-            data = [asdict(record) for record in self.records]
-            manifest_path.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
-            return manifest_path
-
-        with manifest_path.open("w", encoding="utf-8") as handle:
-            for record in self.records:
-                handle.write(json.dumps(asdict(record), ensure_ascii=True) + "\n")
-        return manifest_path
+        return _write_records_to_manifest(
+            self.records, self.config, artifact_root=self._artifact_root()
+        )
 
 
 class MediaSorter:
@@ -645,19 +640,20 @@ class MediaSorter:
             (self.config.output_dir / self.config.face_label).mkdir(parents=True, exist_ok=True)
 
     def _decide_destination(self, record: MediaRecord) -> tuple[str, Path | None]:
+        # ── Pet shortcut ────────────────────────────────────────────────────────
         if record.subject == "pet" and self.config.enable_pet_sorting:
             return self.config.pet_label, self._destination_for_label(self.config.pet_label)
 
-        if not record.is_solo_person:
-            return self.config.ignored_label, self._destination_for_label(self.config.ignored_label)
-
+        # ── Confidence gate ──────────────────────────────────────────────────────
+        # Route to ignored when there is no usable category prediction.
         if record.category is None:
             return self.config.ignored_label, self._destination_for_label(self.config.ignored_label)
 
         if record.category_confidence < self.config.min_category_confidence:
             return self.config.ignored_label, self._destination_for_label(self.config.ignored_label)
 
-        if self.config.enable_face_sorting and record.face_identity:
+        # ── Face-sorting path (solo person only) ─────────────────────────────────
+        if self.config.enable_face_sorting and record.is_solo_person and record.face_identity:
             if self.config.output_dir is None:
                 return f"{self.config.face_label}/{record.face_identity}", None
             return (
@@ -665,6 +661,7 @@ class MediaSorter:
                 self.config.output_dir / self.config.face_label / record.face_identity,
             )
 
+        # ── General category routing (all subjects) ──────────────────────────────
         return record.category, self._destination_for_label(record.category)
 
     def _store(self, source_file: Path, destination_dir: Path | None) -> None:
@@ -680,17 +677,32 @@ class MediaSorter:
             shutil.move(str(source_file), str(destination_file))
 
     def _write_manifest(self) -> Path:
-        default_name = "manifest.json" if self.config.manifest_format == "json" else "manifest.jsonl"
         artifact_root = self.config.output_dir or (self.config.source_dir / ".media_sorter")
-        manifest_path = self.config.manifest_path or (artifact_root / default_name)
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        return _write_records_to_manifest(
+            self.records, self.config, artifact_root=artifact_root
+        )
 
-        if self.config.manifest_format == "json":
-            data = [asdict(record) for record in self.records]
-            manifest_path.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
-            return manifest_path
 
-        with manifest_path.open("w", encoding="utf-8") as handle:
-            for record in self.records:
-                handle.write(json.dumps(asdict(record), ensure_ascii=True) + "\n")
+def _write_records_to_manifest(
+    records: list[MediaRecord],
+    config: SorterConfig,
+    artifact_root: Path,
+) -> Path:
+    """Write *records* to a manifest file and return the path written.
+
+    Shared by both :class:`MediaAnalyzer` and :class:`MediaSorter` so that
+    manifest serialisation logic lives in exactly one place.
+    """
+    default_name = "manifest.json" if config.manifest_format == "json" else "manifest.jsonl"
+    manifest_path = config.manifest_path or (artifact_root / default_name)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if config.manifest_format == "json":
+        data = [asdict(record) for record in records]
+        manifest_path.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
         return manifest_path
+
+    with manifest_path.open("w", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(asdict(record), ensure_ascii=True) + "\n")
+    return manifest_path

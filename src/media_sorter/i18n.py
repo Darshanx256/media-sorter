@@ -1,3 +1,4 @@
+import ast
 import os
 import gettext
 
@@ -16,29 +17,29 @@ def load_po(filepath):
             if not line or line.startswith('#'):
                 continue
             if line.startswith('msgid '):
-                if state == 2 and msgid:
+                if state == 2 and msgid is not None:
                     messages[msgid] = msgstr
                 try:
-                    msgid = eval(line[6:])
+                    msgid = ast.literal_eval(line[6:])
                     state = 1
-                except:
+                except (ValueError, SyntaxError):
                     pass
             elif line.startswith('msgstr '):
                 try:
-                    msgstr = eval(line[7:])
+                    msgstr = ast.literal_eval(line[7:])
                     state = 2
-                except:
+                except (ValueError, SyntaxError):
                     pass
             elif line.startswith('"'):
                 try:
-                    s = eval(line)
+                    s = ast.literal_eval(line)
                     if state == 1:
                         msgid += s
                     elif state == 2:
                         msgstr += s
-                except:
+                except (ValueError, SyntaxError):
                     pass
-        if state == 2 and msgid:
+        if state == 2 and msgid is not None:
             messages[msgid] = msgstr
     return messages
 

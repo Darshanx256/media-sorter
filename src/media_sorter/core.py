@@ -48,8 +48,10 @@ class MediaClassifier:
                 self.model.eval()
                 self._tokenize = open_clip.get_tokenizer(model_name)
                 self._backend = "open_clip"
-            except Exception:
-                # Compatibility fallback: clip-anytorch.
+            except (ImportError, ModuleNotFoundError):
+                # Fallback to clip-anytorch only when open_clip is genuinely
+                # not installed. Any other error (OOM, download failure, etc.)
+                # should surface to the user rather than silently switch backends.
                 import clip
 
                 self.model, self.preprocess = clip.load(config.model_name, device=config.device)
