@@ -25,6 +25,7 @@ class Prediction:
     category: str | None
     category_confidence: float
     category_scores: dict[str, float]
+    embedding: np.ndarray | None = None
 
 
 class MediaClassifier:
@@ -72,6 +73,9 @@ class MediaClassifier:
         self._category_tokens = self._tokenize([config.level_prompts[label] for label in self._category_labels]).to(
             config.device
         )
+        self._subject_embeddings = self._encode_text_features(self._subject_tokens)
+        self._count_embeddings = self._encode_text_features(self._count_tokens)
+        self._category_embeddings = self._encode_text_features(self._category_tokens)
 
     @property
     def category_labels(self) -> list[str]:
@@ -105,7 +109,10 @@ class MediaClassifier:
         image_tensor = self.preprocess(image).unsqueeze(0).to(self.config.device)
 
         with self._torch.no_grad():
-            subject_logits = self._image_text_logits(image_tensor, self._subject_tokens)
+            image_features = self.model.encode_image(image_tensor)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+
+            subject_logits = self._compute_logits(image_features, self._subject_embeddings)
             subject_probs = subject_logits.softmax(dim=-1).cpu().numpy()[0]
             subject_scores = {
                 label: float(subject_probs[idx]) for idx, label in enumerate(self._subject_labels)
@@ -116,7 +123,7 @@ class MediaClassifier:
             person_idx = self._subject_labels.index("person") if "person" in self._subject_labels else None
             person_prob = float(subject_probs[person_idx]) if person_idx is not None else 0.0
 
-            count_logits = self._image_text_logits(image_tensor, self._count_tokens)
+            count_logits = self._compute_logits(image_features, self._count_embeddings)
             count_probs = count_logits.softmax(dim=-1).cpu().numpy()[0]
             count_scores = {
                 label: float(count_probs[idx]) for idx, label in enumerate(self.config.count_labels)
@@ -133,7 +140,7 @@ class MediaClassifier:
                 and (solo_prob - non_solo_prob) >= self.config.min_solo_margin
             )
 
-            cat_logits = self._image_text_logits(image_tensor, self._category_tokens)
+            cat_logits = self._compute_logits(image_features, self._category_embeddings)
             cat_probs = cat_logits.softmax(dim=-1).cpu().numpy()[0]
             category_scores = {
                 label: float(cat_probs[idx]) for idx, label in enumerate(self._category_labels)
@@ -141,6 +148,7 @@ class MediaClassifier:
             cat_idx = int(np.argmax(cat_probs))
             category_label = self._category_labels[cat_idx]
             category_conf = float(cat_probs[cat_idx])
+            embedding = image_features.squeeze(0).cpu().numpy()
 
         return Prediction(
             file_path=None,
@@ -154,6 +162,7 @@ class MediaClassifier:
             category=category_label,
             category_confidence=category_conf,
             category_scores=category_scores,
+            embedding=embedding,
         )
 
     def embedding(self, image: Image.Image) -> np.ndarray:
@@ -173,6 +182,16 @@ class MediaClassifier:
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
         return 100.0 * image_features @ text_features.T
+
+    def _encode_text_features(self, tokens):
+        with self._torch.no_grad():
+            text_features = self.model.encode_text(tokens)
+        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        return text_features
+
+    @staticmethod
+    def _compute_logits(image_features, text_embeddings):
+        return 100.0 * image_features @ text_embeddings.T
 
     @staticmethod
     def _normalize_open_clip_model_name(model_name: str) -> str:

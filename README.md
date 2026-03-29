@@ -143,6 +143,14 @@ This is the recommended path when a team has already settled on prompts and thre
 pip install -e .
 ```
 
+Hatch is the build backend for this project. Install Hatchling (`python -m pip install hatchling`) and then build releases with:
+
+```bash
+hatch build
+```
+
+Use `hatch run media-sorter ...` to execute the CLI inside Hatch's isolated runner when you want to ensure dependencies stay consistent across environments.
+
 The base install contains the Python package plus lightweight runtime dependencies such as `numpy` and `Pillow`.
 
 ### ML Backend
@@ -284,6 +292,10 @@ print(stats.as_dict())
 
 ## CLI Usage
 
+`media-sorter` now uses a Typer-powered dispatcher that exposes `analyze`, `finalize`, and `doctor` as distinct subcommands while still allowing the original analyze flow to be triggered by just supplying a single source directory. Running `media-sorter ./input_media` is equivalent to `media-sorter analyze ./input_media`, and you can explicitly call `media-sorter analyze` when a source directory name clashes with one of the subcommand names. The command list (including `finalize` and `doctor`) is visible via `media-sorter --help`, so scripts can discover which entry points are available before selecting one.
+
+The CLI streams asynchronous progress updates with Rich while scanning media, and the default workflow uses multi-tier deduplication (SHA256 hash + CLIP similarity) with a prioritized capture-date hierarchy (EXIF → filename → mtime). Adjust the near-duplicate sensitivity with `--dedup-similarity` or disable dedup detection with `--disable-deduplication`.
+
 ### Analyze Only
 
 Analysis-only is the default mode:
@@ -320,6 +332,16 @@ Or move files instead:
 media-sorter ./input_media ./sorted_output --mode move
 ```
 
+### Dry-run Preview
+
+Add `--dry-run` to view a Rich table of planned copy/move operations without touching disk:
+
+```
+media-sorter ./input_media ./sorted_output --mode copy --dry-run
+```
+
+The CLI will summarize every intended file move so you can verify the plan before applying it.
+
 ### Index Results In SQLite
 
 ```bash
@@ -352,6 +374,8 @@ Useful options:
 - `--subject-prompts` freezes custom subject prompts into the bundle
 - `--subject-prompts-file` loads subject prompts from JSON or YAML
 
+The bundle now ships both the base ONNX encoder and an INT8 quantized variant. The quantized encoder becomes the primary runtime model (with up to a 43% inference boost) while the base encoder stays available as a fallback; pass `--no-quantize` to skip the INT8 artifact.
+
 The finalize command is intended for the point where prompts and thresholds are already chosen and a developer wants a smaller, more portable output for application integration.
 
 In practice, the quantized model is usually the deployment artifact you actually ship.
@@ -370,6 +394,10 @@ The doctor command reports:
 - finalize/export readiness
 - optional video runtime readiness
 - actionable install hints for missing pieces
+
+### Deduplication & capture dates
+
+The CLI and SDK deduplicate media with a two-tier strategy: exact SHA256 hashes are checked first and a CLIP cosine similarity threshold (adjustable with `--dedup-similarity`) catches near-duplicates. Captured timestamps prefer `EXIF DateTimeOriginal`, fall back to filename patterns like `IMG_YYYYMMDD`, and finally default to the filesystem modification time so every record has a consistent date.
 
 ### Load Prompt Packs From Files
 

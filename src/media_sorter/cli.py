@@ -1,399 +1,378 @@
-import argparse
+from __future__ import annotations
+
+import asyncio
 from pathlib import Path
-import sys
+
+import typer
+from rich import box
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
+from typer.core import TyperGroup
 
 from .config import SorterConfig
 from .doctor import render_doctor_report
 from .finalize import BundleFinalizer
-from .pipeline import MediaAnalyzer, MediaSorter
+from .pipeline import AnalysisStats, MediaAnalyzer, MediaSorter
 from .prompt_packs import resolve_level_prompts, resolve_subject_prompts
 from .i18n import _
 
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="media-sorter",
-        description=_("Analyze media into structured records by default, with optional sorting workflows on top."),
-    )
-    parser.add_argument("source", help=_("Source folder containing media"))
-    parser.add_argument(
-        "output",
-        nargs="?",
-        default=None,
-        help=_("Optional destination folder for sorted media or analysis artifacts"),
-    )
-    parser.add_argument("--device", default="cpu", help=_("Torch device, e.g. cpu or cuda"))
-    parser.add_argument("--model", default="ViT-B/32", help=_("CLIP model name"))
-    parser.add_argument("--limit", type=int, default=None, help=_("Optional max number of files"))
-    parser.add_argument(
-        "--min-confidence",
-        type=float,
-        default=0.0,
-        help=_("Minimum category confidence before the bundled sorter routes media into a category bucket"),
-    )
-    parser.add_argument(
-        "--mode",
-        choices=["copy", "move", "none"],
-        default="none",
-        help=_("How to apply results: none (analysis only), copy, or move"),
-    )
-    parser.add_argument("--dry-run", action="store_true", help=_("Run without writing files"))
-    parser.add_argument(
-        "--prompts",
-        default=None,
-        help=_('JSON dict for category prompts, e.g. {"portrait":"a studio portrait photo"}'),
-    )
-    parser.add_argument(
-        "--prompts-file",
-        default=None,
-        help=_("Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."),
-    )
-    parser.add_argument(
-        "--subject-prompts",
-        default=None,
-        help=_('JSON dict for subject detection, e.g. {"person":"a person","pet":"a pet","other":"other"}'),
-    )
-    parser.add_argument(
-        "--subject-prompts-file",
-        default=None,
-        help=_("Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."),
-    )
-    parser.add_argument(
-        "--max-video-frames",
-        type=int,
-        default=None,
-        help=_("Optional hard cap on sampled frames per video"),
-    )
-    parser.add_argument(
-        "--video-sampling-mode",
-        choices=["second", "skip"],
-        default="second",
-        help=_("Video frame sampling strategy: time-based or fixed frame skip"),
-    )
-    parser.add_argument(
-        "--video-seconds-per-sample",
-        type=float,
-        default=1.0,
-        help=_("In 'second' mode, sample one frame every N seconds"),
-    )
-    parser.add_argument(
-        "--video-frame-skip",
-        type=int,
-        default=10,
-        help=_("In 'skip' mode, sample every Nth frame"),
-    )
-    parser.add_argument(
-        "--min-solo-frame-ratio",
-        type=float,
-        default=0.5,
-        help=_("Minimum ratio of solo-person frames required when using the default people-oriented video filter"),
-    )
-    parser.add_argument(
-        "--min-person-confidence",
-        type=float,
-        default=0.35,
-        help=_("Minimum subject confidence required for person class before solo routing"),
-    )
-    parser.add_argument(
-        "--min-solo-confidence",
-        type=float,
-        default=0.45,
-        help=_("Minimum count-model confidence for exactly-one-person class"),
-    )
-    parser.add_argument(
-        "--min-solo-margin",
-        type=float,
-        default=0.05,
-        help=_("Minimum margin between solo confidence and best non-solo confidence"),
-    )
-    parser.add_argument(
-        "--no-pet-sorting",
-        action="store_true",
-        help=_("Disable pet bucket and route pet media through normal flow"),
-    )
-    parser.add_argument(
-        "--face-sorting",
-        action="store_true",
-        help=_("Enable face-based sorting for accepted person media in the bundled sorter"),
-    )
-    parser.add_argument(
-        "--face-mode",
-        choices=["unnamed", "tagged"],
-        default="unnamed",
-        help=_("Unnamed clustering or tagged identity matching"),
-    )
-    parser.add_argument(
-        "--face-tags-dir",
-        default=None,
-        help=_("Directory with reference faces for tagged mode: <dir>/<tag_name>/*.jpg"),
-    )
-    parser.add_argument(
-        "--face-similarity-threshold",
-        type=float,
-        default=0.82,
-        help=_("Cosine similarity threshold for face matching/clustering"),
-    )
-    parser.add_argument(
-        "--write-manifest",
-        action="store_true",
-        help=_("Write machine-readable output records for app indexing"),
-    )
-    parser.add_argument(
-        "--manifest-path",
-        default=None,
-        help=_("Manifest output path. Defaults under output directory"),
-    )
-    parser.add_argument(
-        "--manifest-format",
-        choices=["jsonl", "json"],
-        default="jsonl",
-        help=_("Manifest format for integration pipelines"),
-    )
-    parser.add_argument(
-        "--index",
-        action="store_true",
-        help=_("Enable persistent SQLite media index for app backends"),
-    )
-    parser.add_argument(
-        "--index-db-path",
-        default=None,
-        help=_("Path to SQLite index database. Defaults under output directory"),
-    )
-    parser.add_argument(
-        "--index-mode",
-        choices=["full", "update"],
-        default="full",
-        help=_("Indexing mode: full rebuild pass or update unchanged-aware pass"),
-    )
-    parser.add_argument(
-        "--index-prune-missing",
-        action="store_true",
-        help=_("When indexing, remove database entries no longer present in source"),
-    )
-    return parser
+ANALYZE_COMMANDS = {"analyze", "finalize", "doctor"}
 
 
-def build_finalize_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="media-sorter finalize",
-        description=_("Export a compact app-ready bundle with a frozen image encoder, prompt embeddings, and a tiny runtime script. Finalized bundles are image-first today."),
-    )
-    parser.add_argument("bundle_dir", help=_("Directory to write the finalized deployment bundle into"))
-    parser.add_argument("--device", default="cpu", help=_("Torch device to initialize before export; cpu is recommended"))
-    parser.add_argument("--model", default="ViT-B/32", help=_("CLIP model name"))
-    parser.add_argument(
-        "--prompts",
-        default=None,
-        help=_('JSON dict for category prompts, e.g. {"portrait":"a studio portrait photo"}'),
-    )
-    parser.add_argument(
-        "--prompts-file",
-        default=None,
-        help=_("Path to a JSON or YAML category prompt pack. File prompts override built-in defaults."),
-    )
-    parser.add_argument(
-        "--subject-prompts",
-        default=None,
-        help=_('JSON dict for subject detection, e.g. {"person":"a person","pet":"a pet","other":"other"}'),
-    )
-    parser.add_argument(
-        "--subject-prompts-file",
-        default=None,
-        help=_("Path to a JSON or YAML subject prompt pack. File prompts override built-in defaults."),
-    )
-    parser.add_argument(
-        "--min-confidence",
-        type=float,
-        default=0.0,
-        help=_("Minimum category confidence saved into the bundle metadata"),
-    )
-    parser.add_argument(
-        "--min-person-confidence",
-        type=float,
-        default=0.35,
-        help=_("Minimum subject confidence for person class in the generated runner"),
-    )
-    parser.add_argument(
-        "--min-solo-confidence",
-        type=float,
-        default=0.45,
-        help=_("Minimum solo confidence in the generated runner"),
-    )
-    parser.add_argument(
-        "--min-solo-margin",
-        type=float,
-        default=0.05,
-        help=_("Minimum margin between solo and non-solo confidence in the generated runner"),
-    )
-    parser.add_argument(
-        "--no-quantize",
-        action="store_true",
-        help=_("Skip INT8 quantization and keep only the base ONNX model"),
-    )
-    parser.add_argument(
-        "--no-runner",
-        action="store_true",
-        help=_("Skip generating the standalone Python runner script"),
-    )
-    return parser
+class MediaSorterGroup(TyperGroup):
+    def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:
+        adjusted_args = list(args)
+        should_inject = (
+            adjusted_args
+            and not adjusted_args[0].startswith("-")
+            and adjusted_args[0] not in ANALYZE_COMMANDS
+        )
+        if should_inject:
+            adjusted_args.insert(0, "analyze")
+        return super().parse_args(ctx, adjusted_args)
 
 
-def build_doctor_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="media-sorter doctor",
-        description=_("Inspect the current Python environment and report whether ML, finalize, and optional video pieces look ready."),
-    )
-    parser.add_argument(
-        "--expect-video",
-        action="store_true",
-        help=_("Treat video support as part of the expected environment and report cv2 issues as actionable gaps."),
-    )
-    parser.add_argument(
-        "--expect-finalize",
-        action="store_true",
-        help=_("Treat finalize/export support as part of the expected environment and report ONNX stack issues as actionable gaps."),
-    )
-    return parser
+app = typer.Typer(
+    invoke_without_command=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    cls=MediaSorterGroup,
+)
+console = Console()
+Runner = MediaAnalyzer | MediaSorter
 
 
-def _run_finalize(argv: list[str]) -> int:
-    parser = build_finalize_parser()
+def _format_path(value: Path | None) -> str:
+    return str(value) if value is not None else "-"
+
+
+async def _run_with_progress(runner: Runner, file_paths: list[Path]) -> AnalysisStats:
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    )
+    description = _("Analyzing media")
+    with progress:
+        task_id = progress.add_task(description, total=len(file_paths))
+
+        def progress_callback(current_path: Path, stats: AnalysisStats) -> None:
+            progress.update(
+                task_id,
+                advance=1,
+                description=f"{description} ({current_path.name})",
+            )
+
+        stats = await runner.run_async(progress_callback=progress_callback, file_paths=file_paths)
+    return stats
+
+
+async def _run_main_async(config: SorterConfig, mode: str) -> tuple[AnalysisStats, Runner, list[Path]]:
+    if mode == "none":
+        runner = MediaAnalyzer(config)
+        file_paths = await runner._collect_input_files_async()
+    else:
+        sorter = MediaSorter(config)
+        runner = sorter
+        file_paths = await sorter.analyzer._collect_input_files_async()
+    stats = await _run_with_progress(runner, file_paths)
+    return stats, runner, file_paths
+
+
+def _print_summary(runner: Runner, stats: AnalysisStats, file_paths: list[Path]) -> None:
+    table = Table(title=_("Run summary"), box=box.SIMPLE_HEAVY)
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Discovered files", str(len(file_paths)))
+    table.add_row("Processed", str(stats.total_seen))
+    table.add_row("Images", str(stats.image_files))
+    table.add_row("Videos", str(stats.video_files))
+    if stats.skipped:
+        table.add_row("Skipped", str(stats.skipped))
+    if stats.errors:
+        table.add_row("Errors", str(stats.errors))
+    if stats.duplicates:
+        table.add_row("Duplicates", str(stats.duplicates))
+
+    counts = stats.as_dict()
+    for label in sorted(counts):
+        if label in {"ok", "error", "skipped", "duplicate"}:
+            continue
+        count = counts[label]
+        if count:
+            table.add_row(label, str(count))
+
+    if runner.manifest_output_path is not None:
+        table.add_row("Manifest", _format_path(runner.manifest_output_path))
+
+    if runner.index_db_path is not None:
+        table.add_row("Index DB", _format_path(runner.index_db_path))
+        table.add_row("Index updates", str(runner.index_updated_count))
+        table.add_row("Index skips", str(runner.index_skipped_count))
+        if runner.index_pruned_count is not None:
+            table.add_row("Index pruned", str(runner.index_pruned_count))
+
+    console.print(table)
+
+
+def _print_dry_run_table(sorter: MediaSorter) -> None:
+    if not sorter.planned_moves:
+        console.print(_("Dry run detected no file operations."))
+        return
+
+    console.rule("[yellow]Dry-run preview")
+    table = Table(show_lines=True)
+    table.add_column("Action", style="bold")
+    table.add_column("Source", style="dim")
+    table.add_column("Destination", style="green")
+
+    for source, destination, action in sorter.planned_moves:
+        table.add_row(action.capitalize(), str(source), str(destination))
+
+    console.print(table)
+
+
+def _run_analyze(
+    source: Path,
+    output: Path | None,
+    device: str,
+    model: str,
+    limit: int | None,
+    min_confidence: float,
+    mode: str,
+    dry_run: bool,
+    prompts: str | None,
+    prompts_file: Path | None,
+    subject_prompts: str | None,
+    subject_prompts_file: Path | None,
+    max_video_frames: int | None,
+    video_sampling_mode: str,
+    video_seconds_per_sample: float,
+    video_frame_skip: int,
+    min_solo_frame_ratio: float,
+    min_person_confidence: float,
+    min_solo_confidence: float,
+    min_solo_margin: float,
+    no_pet_sorting: bool,
+    face_sorting: bool,
+    face_mode: str,
+    face_tags_dir: Path | None,
+    face_similarity_threshold: float,
+    write_manifest: bool,
+    manifest_path: Path | None,
+    manifest_format: str,
+    index: bool,
+    index_db_path: Path | None,
+    index_mode: str,
+    index_prune_missing: bool,
+    dedup_similarity: float,
+    disable_deduplication: bool,
+) -> None:
     try:
-        args = parser.parse_args(argv)
+        level_prompts = resolve_level_prompts(inline_json=prompts, prompts_path=prompts_file)
+        subject_data = resolve_subject_prompts(inline_json=subject_prompts, prompts_path=subject_prompts_file)
+
+        config = SorterConfig(
+            source_dir=source,
+            output_dir=output,
+            device=device,
+            model_name=model,
+            limit=limit,
+            level_prompts=level_prompts,
+            subject_prompts=subject_data,
+            min_category_confidence=min_confidence,
+            copy_mode=mode,
+            dry_run=dry_run,
+            write_manifest=write_manifest,
+            manifest_path=manifest_path,
+            manifest_format=manifest_format,
+            enable_index=index,
+            index_db_path=index_db_path,
+            index_mode=index_mode,
+            index_prune_missing=index_prune_missing,
+            max_video_frames=max_video_frames,
+            video_sampling_mode=video_sampling_mode,
+            video_seconds_per_sample=video_seconds_per_sample,
+            video_frame_skip=video_frame_skip,
+            min_solo_frame_ratio=min_solo_frame_ratio,
+            min_person_confidence=min_person_confidence,
+            min_solo_confidence=min_solo_confidence,
+            min_solo_margin=min_solo_margin,
+            enable_pet_sorting=not no_pet_sorting,
+            enable_face_sorting=face_sorting,
+            face_mode=face_mode,
+            face_tags_dir=face_tags_dir,
+            face_similarity_threshold=face_similarity_threshold,
+            enable_deduplication=not disable_deduplication,
+            dedup_similarity_threshold=dedup_similarity,
+        )
+    except ValueError as exc:
+        console.print(f"[red]Configuration error:[/] {exc}")
+        raise typer.Exit(code=2)
+
+    try:
+        stats, runner, file_paths = asyncio.run(_run_main_async(config, mode))
+    except ValueError as exc:
+        console.print(f"[red]Configuration error:[/] {exc}")
+        raise typer.Exit(code=2)
+    except RuntimeError as exc:
+        console.print(f"[red]Runtime error:[/] {exc}")
+        raise typer.Exit(code=2)
+
+    console.rule(_("Processing complete"))
+    _print_summary(runner, stats, file_paths)
+    if isinstance(runner, MediaSorter) and config.copy_mode != "none" and config.dry_run:
+        _print_dry_run_table(runner)
+
+
+@app.command(
+    "analyze",
+    help=_(
+        "Alias for the default analyze workflow (use when the source path matches a subcommand name)."
+    ),
+)
+def analyze(
+    source: Path = typer.Argument(..., help=_("Source folder containing media")),
+    output: Path | None = typer.Argument(None, help=_("Optional destination folder for sorted media or analysis artifacts")),
+    device: str = typer.Option("cpu", help=_("Torch device, e.g. cpu or cuda")),
+    model: str = typer.Option("ViT-B/32", help=_("CLIP model name")),
+    limit: int | None = typer.Option(None, help=_("Optional max number of files")),
+    min_confidence: float = typer.Option(0.0, help=_("Minimum category confidence before sorting")),
+    mode: str = typer.Option("none", case_sensitive=False, help=_("How to apply results: none (analysis only), copy, or move")),
+    dry_run: bool = typer.Option(False, help=_("Run without writing files and show a preview of actions")),
+    prompts: str | None = typer.Option(None, help=_('JSON dict for category prompts, e.g. {"portrait":"a studio portrait photo"}')),
+    prompts_file: Path | None = typer.Option(None, help=_("Path to a JSON or YAML category prompt pack")),
+    subject_prompts: str | None = typer.Option(None, help=_('JSON dict for subject detection')),
+    subject_prompts_file: Path | None = typer.Option(None, help=_("Path to a subject prompt pack")),
+    max_video_frames: int | None = typer.Option(None, help=_("Optional hard cap on sampled frames per video")),
+    video_sampling_mode: str = typer.Option("second", case_sensitive=False, help=_("Video frame sampling strategy")),
+    video_seconds_per_sample: float = typer.Option(1.0, help=_("Seconds between samples when using second mode")),
+    video_frame_skip: int = typer.Option(10, help=_("Frame skip when using skip mode")),
+    min_solo_frame_ratio: float = typer.Option(0.5, help=_("Minimum ratio of solo-person frames")),
+    min_person_confidence: float = typer.Option(0.35, help=_("Minimum person confidence before solo routing")),
+    min_solo_confidence: float = typer.Option(0.45, help=_("Minimum solo confidence for one person")),
+    min_solo_margin: float = typer.Option(0.05, help=_("Minimum margin between solo and non-solo")),
+    no_pet_sorting: bool = typer.Option(False, help=_("Disable the pet bucket")),
+    face_sorting: bool = typer.Option(False, help=_("Enable face-based sorting")),
+    face_mode: str = typer.Option("unnamed", case_sensitive=False, help=_("Face sorting mode: unnamed or tagged")),
+    face_tags_dir: Path | None = typer.Option(None, help=_("Directory with reference faces for tagged mode")),
+    face_similarity_threshold: float = typer.Option(0.82, help=_("Cosine similarity threshold for face matching")),
+    write_manifest: bool = typer.Option(False, help=_("Write machine-readable manifest records")),
+    manifest_path: Path | None = typer.Option(None, help=_("Manifest output path")),
+    manifest_format: str = typer.Option("jsonl", case_sensitive=False, help=_("Manifest format: jsonl or json")),
+    index: bool = typer.Option(False, help=_("Enable persistent SQLite media index")),
+    index_db_path: Path | None = typer.Option(None, help=_("Path to SQLite index database")),
+    index_mode: str = typer.Option("full", case_sensitive=False, help=_("Index mode: full or update")),
+    index_prune_missing: bool = typer.Option(False, help=_("Remove missing entries when indexing")),
+    dedup_similarity: float = typer.Option(0.98, help=_("CLIP similarity threshold for near-duplicate detection")),
+    disable_deduplication: bool = typer.Option(False, help=_("Turn off multi-tier deduplication")),
+) -> None:
+    _run_analyze(
+        source,
+        output,
+        device,
+        model,
+        limit,
+        min_confidence,
+        mode,
+        dry_run,
+        prompts,
+        prompts_file,
+        subject_prompts,
+        subject_prompts_file,
+        max_video_frames,
+        video_sampling_mode,
+        video_seconds_per_sample,
+        video_frame_skip,
+        min_solo_frame_ratio,
+        min_person_confidence,
+        min_solo_confidence,
+        min_solo_margin,
+        no_pet_sorting,
+        face_sorting,
+        face_mode,
+        face_tags_dir,
+        face_similarity_threshold,
+        write_manifest,
+        manifest_path,
+        manifest_format,
+        index,
+        index_db_path,
+        index_mode,
+        index_prune_missing,
+        dedup_similarity,
+        disable_deduplication,
+    )
+
+
+@app.command("finalize", help=_("Export an image-first bundle with frozen prompts and ONNX models."))
+def finalize(
+    bundle_dir: Path = typer.Argument(..., help=_("Directory to write the finalized bundle into")),
+    device: str = typer.Option("cpu", help=_("Torch device to initialize before export")),
+    model: str = typer.Option("ViT-B/32", help=_("CLIP model name")),
+    prompts: str | None = typer.Option(None, help=_('JSON dict for category prompts in the bundle')),
+    prompts_file: Path | None = typer.Option(None, help=_("Path to a JSON or YAML category prompt pack")),
+    subject_prompts: str | None = typer.Option(None, help=_('JSON dict for subject detection prompts')),
+    subject_prompts_file: Path | None = typer.Option(None, help=_("Path to a subject prompt pack")),
+    min_confidence: float = typer.Option(0.0, help=_("Minimum category confidence saved to the bundle")),
+    min_person_confidence: float = typer.Option(0.35, help=_("Minimum person confidence recorded in the runner")),
+    min_solo_confidence: float = typer.Option(0.45, help=_("Minimum solo confidence recorded in the runner")),
+    min_solo_margin: float = typer.Option(0.05, help=_("Minimum solo margin recorded in the runner")),
+    no_quantize: bool = typer.Option(False, help=_("Skip exporting the INT8 quantized model")),
+    no_runner: bool = typer.Option(False, help=_("Skip generating the standalone Python runner script")),
+) -> None:
+    try:
+        level_prompts = resolve_level_prompts(inline_json=prompts, prompts_path=prompts_file)
+        subject_data = resolve_subject_prompts(inline_json=subject_prompts, prompts_path=subject_prompts_file)
+
         config = SorterConfig(
             source_dir=Path("."),
             output_dir=None,
-            device=args.device,
-            model_name=args.model,
-            level_prompts=resolve_level_prompts(inline_json=args.prompts, prompts_path=args.prompts_file),
-            subject_prompts=resolve_subject_prompts(
-                inline_json=args.subject_prompts,
-                prompts_path=args.subject_prompts_file,
-            ),
-            min_category_confidence=args.min_confidence,
-            min_person_confidence=args.min_person_confidence,
-            min_solo_confidence=args.min_solo_confidence,
-            min_solo_margin=args.min_solo_margin,
-        )
-        finalizer = BundleFinalizer(config)
-        artifacts = finalizer.finalize(
-            args.bundle_dir,
-            quantize=not args.no_quantize,
-            include_runner=not args.no_runner,
+            device=device,
+            model_name=model,
+            level_prompts=level_prompts,
+            subject_prompts=subject_data,
+            min_category_confidence=min_confidence,
+            min_person_confidence=min_person_confidence,
+            min_solo_confidence=min_solo_confidence,
+            min_solo_margin=min_solo_margin,
         )
     except ValueError as exc:
-        print(_("Configuration error:") + f" {exc}", file=sys.stderr)
-        return 2
+        console.print(f"[red]Configuration error:[/] {exc}")
+        raise typer.Exit(code=2)
+
+    try:
+        finalizer = BundleFinalizer(config)
+        artifacts = finalizer.finalize(bundle_dir, quantize=not no_quantize, include_runner=not no_runner)
+    except ValueError as exc:
+        console.print(f"[red]Configuration error:[/] {exc}")
+        raise typer.Exit(code=2)
     except RuntimeError as exc:
-        print(_("Finalize error:") + f"\n{exc}", file=sys.stderr)
-        return 2
+        console.print(f"[red]Finalize error:[/]\n{exc}")
+        raise typer.Exit(code=2)
 
-    print(_("Finalize complete"))
-    print(_("Bundle:") + f" {artifacts.bundle_dir}")
-    print(_("Model:") + f" {artifacts.model_path}")
+    console.print("[bold green]Finalize complete[/]")
+    console.print(_("Bundle:"), artifacts.bundle_dir)
+    console.print(_("Model:"), artifacts.model_path)
     if artifacts.quantized_model_path is not None:
-        print(_("Quantized model:") + f" {artifacts.quantized_model_path}")
-    print(_("Config:") + f" {artifacts.config_path}")
-    print(_("Embeddings:") + f" {artifacts.embeddings_path}")
-    print(_("Requirements:") + f" {artifacts.requirements_path}")
+        console.print(_("Quantized model:"), artifacts.quantized_model_path)
+    console.print(_("Config:"), artifacts.config_path)
+    console.print(_("Embeddings:"), artifacts.embeddings_path)
+    console.print(_("Requirements:"), artifacts.requirements_path)
     if artifacts.runner_path.exists():
-        print(_("Runner:") + f" {artifacts.runner_path}")
-    return 0
+        console.print(_("Runner:"), artifacts.runner_path)
 
 
-def _run_doctor(argv: list[str]) -> int:
-    parser = build_doctor_parser()
-    args = parser.parse_args(argv)
-    print(
-        render_doctor_report(
-            expect_video=args.expect_video,
-            expect_finalize=args.expect_finalize,
-        ),
+@app.command("doctor", help=_("Inspect the Python environment for ML, finalize, and optional video readiness."))
+def doctor(
+    expect_video: bool = typer.Option(False, help=_("Treat video runtime support as expected")),
+    expect_finalize: bool = typer.Option(False, help=_("Treat finalize/export support as expected")),
+) -> None:
+    console.print(
+        render_doctor_report(expect_video=expect_video, expect_finalize=expect_finalize),
         end="",
     )
-    return 0
-
-
-def main() -> int:
-    if len(sys.argv) > 1 and sys.argv[1] == "finalize":
-        return _run_finalize(sys.argv[2:])
-    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
-        return _run_doctor(sys.argv[2:])
-
-    parser = build_parser()
-    try:
-        args = parser.parse_args()
-
-        config = SorterConfig(
-            source_dir=args.source,
-            output_dir=args.output,
-            device=args.device,
-            model_name=args.model,
-            limit=args.limit,
-            level_prompts=resolve_level_prompts(inline_json=args.prompts, prompts_path=args.prompts_file),
-            subject_prompts=resolve_subject_prompts(
-                inline_json=args.subject_prompts,
-                prompts_path=args.subject_prompts_file,
-            ),
-            min_category_confidence=args.min_confidence,
-            copy_mode=args.mode,
-            dry_run=args.dry_run,
-            write_manifest=args.write_manifest,
-            manifest_path=args.manifest_path,
-            manifest_format=args.manifest_format,
-            enable_index=args.index,
-            index_db_path=args.index_db_path,
-            index_mode=args.index_mode,
-            index_prune_missing=args.index_prune_missing,
-            max_video_frames=args.max_video_frames,
-            video_sampling_mode=args.video_sampling_mode,
-            video_seconds_per_sample=args.video_seconds_per_sample,
-            video_frame_skip=args.video_frame_skip,
-            min_solo_frame_ratio=args.min_solo_frame_ratio,
-            min_person_confidence=args.min_person_confidence,
-            min_solo_confidence=args.min_solo_confidence,
-            min_solo_margin=args.min_solo_margin,
-            enable_pet_sorting=not args.no_pet_sorting,
-            enable_face_sorting=args.face_sorting,
-            face_mode=args.face_mode,
-            face_tags_dir=args.face_tags_dir,
-            face_similarity_threshold=args.face_similarity_threshold,
-        )
-
-        runner = MediaAnalyzer(config) if args.mode == "none" else MediaSorter(config)
-        stats = runner.run()
-    except ValueError as exc:
-        print(_("Configuration error:") + f" {exc}", file=sys.stderr)
-        return 2
-    except RuntimeError as exc:
-        print(_("Runtime setup error:") + f"\n{exc}", file=sys.stderr)
-        print(_("\nPython in use:") + f" {sys.executable}", file=sys.stderr)
-        print(
-            _("Use interpreter-specific pip:") + f" {sys.executable} -m pip ...",
-            file=sys.stderr,
-        )
-        return 2
-
-    print(_("Processing complete"))
-    print(_("Total seen:") + f" {stats.total_seen}")
-    print(_("Images:") + f" {stats.image_files}")
-    print(_("Videos:") + f" {stats.video_files}")
-    print(_("Skipped (index):") + f" {stats.skipped}")
-    print(_("Errors:") + f" {stats.errors}")
-    print(_("Counts:"))
-    for label, count in stats.as_dict().items():
-        print(f"  {label}: {count}")
-    if runner.manifest_output_path is not None:
-        print(_("Manifest:") + f" {runner.manifest_output_path}")
-    if runner.index_db_path is not None:
-        print(_("Index DB:") + f" {runner.index_db_path}")
-        print(_("Indexed rows updated:") + f" {runner.index_updated_count}")
-        print(_("Indexed rows skipped:") + f" {runner.index_skipped_count}")
-        if runner.index_pruned_count is not None:
-            print(_("Index rows pruned:") + f" {runner.index_pruned_count}")
-
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

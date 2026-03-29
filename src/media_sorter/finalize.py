@@ -75,6 +75,8 @@ class BundleFinalizer:
             index_db_path=self.config.index_db_path,
             index_mode=self.config.index_mode,
             index_prune_missing=self.config.index_prune_missing,
+            enable_deduplication=self.config.enable_deduplication,
+            dedup_similarity_threshold=self.config.dedup_similarity_threshold,
             enable_face_sorting=self.config.enable_face_sorting,
             face_mode=self.config.face_mode,
             face_label=self.config.face_label,

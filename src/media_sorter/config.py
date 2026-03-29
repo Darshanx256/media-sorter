@@ -77,6 +77,9 @@ class SorterConfig:
     index_mode: str = "full"  # full | update
     index_prune_missing: bool = False
 
+    enable_deduplication: bool = True
+    dedup_similarity_threshold: float = 0.98
+
     enable_face_sorting: bool = False
     face_mode: str = "unnamed"  # unnamed | tagged
     face_label: str = "faces"
@@ -135,6 +138,9 @@ class SorterConfig:
 
         if self.index_mode not in {"full", "update"}:
             raise ValueError("index_mode must be 'full' or 'update'")
+
+        if not (0.0 <= self.dedup_similarity_threshold <= 1.0):
+            raise ValueError("dedup_similarity_threshold must be between 0.0 and 1.0")
 
         if self.max_video_frames is not None and self.max_video_frames < 1:
             raise ValueError("max_video_frames must be >= 1 when set")

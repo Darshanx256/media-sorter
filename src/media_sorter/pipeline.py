@@ -1,12 +1,55 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import logging
+import os
+import re
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import shutil
+from typing import Any, TypeVar
 
 import numpy as np
 from PIL import ExifTags, Image
+
+T = TypeVar("T")
+
+
+async def _run_in_executor(
+    executor: ThreadPoolExecutor,
+    func: Callable[..., T],
+    *args: Any,
+    **kwargs: Any,
+) -> T:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, lambda: func(*args, **kwargs))
+
+
+logger = logging.getLogger(__name__)
+
+
+def _create_io_executor(prefix: str, max_workers: int) -> ThreadPoolExecutor | None:
+    executor: ThreadPoolExecutor | None = None
+    try:
+        executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix=prefix)
+        future = executor.submit(lambda: None)
+        future.result(timeout=0.5)
+        return executor
+    except (Exception, TimeoutError) as exc:
+        if executor is not None:
+            executor.shutdown(wait=False)
+        logger.debug("I/O executor %s unavailable, falling back to synchronous operations: %s", prefix, exc)
+        return None
+
+
+_IO_WAIT_TIMEOUT = 5.0
+
+_FILENAME_DATE_REGEX = re.compile(r"(?<!\d)(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?!\d)")
 
 from .config import SorterConfig
 from .core import MediaClassifier, Prediction
@@ -21,6 +64,7 @@ class AnalysisStats:
     video_files: int = 0
     skipped: int = 0
     errors: int = 0
+    duplicates: int = 0
 
     def as_dict(self) -> dict[str, int]:
         return dict(self.counts)
@@ -40,6 +84,7 @@ class MediaMetadata:
     frame_count: int | None = None
     fps: float | None = None
     duration_seconds: float | None = None
+    capture_date: str | None = None
     exif: dict[str, str] = field(default_factory=dict)
 
 
@@ -231,66 +276,148 @@ class MediaAnalyzer:
         self.index_updated_count: int = 0
         self.index_skipped_count: int = 0
         self.index_pruned_count: int | None = None
-        self.stats = AnalysisStats(counts={"ok": 0, "error": 0, "skipped": 0})
+        self.stats = AnalysisStats(counts={"ok": 0, "error": 0, "skipped": 0, "duplicate": 0})
+        self._dedup_hash_index: dict[str, str] = {}
+        self._embedding_index: list[tuple[np.ndarray, str]] = []
+        self._record_registry: dict[str, MediaRecord] = {}
+        max_workers = max(2, (os.cpu_count() or 1))
+        self._io_executor = _create_io_executor("media-sorter-analyzer-io", max_workers)
 
     def run(self) -> AnalysisStats:
+        return asyncio.run(self.run_async())
+
+    async def _run_io(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        executor = self._io_executor
+        if executor is None:
+            return func(*args, **kwargs)
+        func_name = getattr(func, "__name__", repr(func))
+        try:
+            return await asyncio.wait_for(
+                _run_in_executor(executor, func, *args, **kwargs),
+                timeout=_IO_WAIT_TIMEOUT,
+            )
+        except asyncio.TimeoutError as exc:
+            logger.debug("Threaded I/O (%s) timed out; retrying synchronously (%s)", func_name, exc)
+            self._shutdown_io_executor()
+            return func(*args, **kwargs)
+
+    def _shutdown_io_executor(self) -> None:
+        if self._io_executor is not None:
+            self._io_executor.shutdown(wait=False)
+            self._io_executor = None
+
+    async def run_async(
+        self,
+        progress_callback: Callable[[Path, AnalysisStats], None] | None = None,
+        *,
+        file_paths: list[Path] | None = None,
+    ) -> AnalysisStats:
         seen_sources: set[str] = set()
         index_store: IndexStore | None = None
 
-        if self.config.enable_index:
-            self.index_db_path = self.config.index_db_path or (self._artifact_root() / "media_index.sqlite3")
-            index_store = IndexStore(self.index_db_path, mode=self.config.index_mode)
-
         try:
-            for file_path in self._iter_input_files():
-                if self.config.limit is not None and self.stats.total_seen >= self.config.limit:
-                    break
+            if self.config.enable_index:
+                self.index_db_path = self.config.index_db_path or (self._artifact_root() / "media_index.sqlite3")
+                index_store = IndexStore(self.index_db_path, mode=self.config.index_mode)
 
-                seen_sources.add(str(file_path))
+            job_files = file_paths if file_paths is not None else await self._collect_input_files_async()
+            try:
+                for file_path in job_files:
+                    if self.config.limit is not None and self.stats.total_seen >= self.config.limit:
+                        break
 
+                    seen_sources.add(str(file_path))
+
+                    if index_store is not None:
+                        should_process, row = index_store.should_process(file_path)
+                        if not should_process and row is not None:
+                            cached = MediaRecord(**record_from_row(row, status="skipped"))
+                            self.records.append(cached)
+                            self._record_registry[cached.source] = cached
+                            self.stats.skipped += 1
+                            self.stats.counts["skipped"] = self.stats.counts.get("skipped", 0) + 1
+                            self.index_skipped_count += 1
+                            self.stats.total_seen += 1
+                            if progress_callback:
+                                progress_callback(file_path, self.stats)
+                            continue
+
+                    record = await self.analyze_file_async(file_path)
+                    self.records.append(record)
+                    self.stats.counts[record.status] = self.stats.counts.get(record.status, 0) + 1
+                    if record.status == "error":
+                        self.stats.errors += 1
+                    elif record.status == "duplicate":
+                        self.stats.duplicates += 1
+
+                    if index_store is not None:
+                        index_store.upsert_record(record, file_size=record.metadata.file_size, mtime_ns=record.metadata.mtime_ns)
+                        self.index_updated_count += 1
+
+                    self.stats.total_seen += 1
+                    if progress_callback:
+                        progress_callback(file_path, self.stats)
+            finally:
                 if index_store is not None:
-                    should_process, row = index_store.should_process(file_path)
-                    if not should_process and row is not None:
-                        cached = MediaRecord(**record_from_row(row, status="skipped"))
-                        self.records.append(cached)
-                        self.stats.skipped += 1
-                        self.stats.counts["skipped"] = self.stats.counts.get("skipped", 0) + 1
-                        self.index_skipped_count += 1
-                        self.stats.total_seen += 1
-                        continue
+                    if self.config.index_prune_missing:
+                        self.index_pruned_count = index_store.prune_missing(seen_sources)
+                    index_store.commit()
+                    index_store.close()
 
-                record = self.analyze_file(file_path)
-                self.records.append(record)
-                self.stats.counts[record.status] = self.stats.counts.get(record.status, 0) + 1
-                if record.status == "error":
-                    self.stats.errors += 1
+            if self.config.write_manifest:
+                self.manifest_output_path = await self._write_manifest_async()
 
-                if index_store is not None:
-                    index_store.upsert_record(record, file_size=record.metadata.file_size, mtime_ns=record.metadata.mtime_ns)
-                    self.index_updated_count += 1
-
-                self.stats.total_seen += 1
+            return self.stats
         finally:
-            if index_store is not None:
-                if self.config.index_prune_missing:
-                    self.index_pruned_count = index_store.prune_missing(seen_sources)
-                index_store.commit()
-                index_store.close()
-
-        if self.config.write_manifest:
-            self.manifest_output_path = self._write_manifest()
-
-        return self.stats
+            self._shutdown_io_executor()
 
     def analyze_file(self, file_path: Path) -> MediaRecord:
-        file_size, mtime_ns = self._stat_file(file_path)
-        media_type = self._media_type(file_path)
-        metadata = self._collect_metadata(file_path, media_type, file_size, mtime_ns)
+        return asyncio.run(self.analyze_file_async(file_path))
 
+    async def analyze_file_async(self, file_path: Path) -> MediaRecord:
+        file_size, mtime_ns = await self._run_io(self._stat_file, file_path)
+        media_type = self._media_type(file_path)
+        file_hash: str | None = None
+
+        if self.config.enable_deduplication:
+            file_hash = await self._hash_file_async(file_path)
+            existing_path = self._dedup_hash_index.get(file_hash)
+            if existing_path:
+                original_record = self._record_registry.get(existing_path)
+                metadata = self._duplicate_metadata(file_path, file_size, mtime_ns, original_record)
+                return self._build_duplicate_record(
+                    file_path,
+                    media_type,
+                    metadata,
+                    existing_path,
+                    original_record,
+                    "SHA256 hash match",
+                )
+
+        metadata = await self._run_io(
+            self._collect_metadata, file_path, media_type, file_size, mtime_ns
+        )
         try:
             prediction, sampled_frames = self._predict(file_path)
+            embedding = prediction.embedding
+            near_duplicate_path: str | None = None
+            if self.config.enable_deduplication and embedding is not None:
+                near_duplicate_path = self._find_near_duplicate(embedding)
+
+            if near_duplicate_path:
+                original_record = self._record_registry.get(near_duplicate_path)
+                metadata = self._duplicate_metadata(file_path, file_size, mtime_ns, original_record)
+                return self._build_duplicate_record(
+                    file_path,
+                    media_type,
+                    metadata,
+                    near_duplicate_path,
+                    original_record,
+                    "CLIP similarity",
+                )
+
             face_identity = self._detect_face_identity(file_path, sampled_frames, prediction.subject)
-            return MediaRecord(
+            record = MediaRecord(
                 source=str(file_path),
                 media_type=media_type,
                 destination=None,
@@ -310,6 +437,8 @@ class MediaAnalyzer:
                 sampled_frames=sampled_frames,
                 status="ok",
             )
+            self._register_unique_entry(str(file_path), file_hash, embedding, record)
+            return record
         except Exception as exc:
             return MediaRecord(
                 source=str(file_path),
@@ -356,6 +485,177 @@ class MediaAnalyzer:
         except OSError:
             return 0, 0
 
+    def _scan_input_files(self) -> list[Path]:
+        if not self.config.source_dir.exists():
+            return []
+        return [
+            file_path
+            for file_path in sorted(self.config.source_dir.rglob("*"))
+            if file_path.is_file() and file_path.suffix.lower() in self.config.all_extensions
+        ]
+
+    async def _collect_input_files_async(self) -> list[Path]:
+        return await self._run_io(self._scan_input_files)
+
+    async def _hash_file_async(self, file_path: Path) -> str:
+        return await self._run_io(self._compute_sha256, file_path)
+
+    def _compute_sha256(self, file_path: Path) -> str:
+        hasher = hashlib.sha256()
+        with file_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(65536), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    def _duplicate_metadata(
+        self,
+        file_path: Path,
+        file_size: int,
+        mtime_ns: int,
+        original_record: MediaRecord | None,
+    ) -> MediaMetadata:
+        base_meta = original_record.metadata if original_record else None
+        if base_meta:
+            capture_date = base_meta.capture_date or self._resolve_capture_date(file_path, base_meta.exif, mtime_ns)
+            return MediaMetadata(
+                file_name=file_path.name,
+                extension=file_path.suffix.lower(),
+                file_size=file_size,
+                mtime_ns=mtime_ns,
+                width=base_meta.width,
+                height=base_meta.height,
+                frame_count=base_meta.frame_count,
+                fps=base_meta.fps,
+                duration_seconds=base_meta.duration_seconds,
+                capture_date=capture_date,
+                exif=dict(base_meta.exif),
+            )
+
+        capture_date = self._resolve_capture_date(file_path, {}, mtime_ns)
+        return MediaMetadata(
+            file_name=file_path.name,
+            extension=file_path.suffix.lower(),
+            file_size=file_size,
+            mtime_ns=mtime_ns,
+            capture_date=capture_date,
+            exif={},
+        )
+
+    def _build_duplicate_record(
+        self,
+        file_path: Path,
+        media_type: str,
+        metadata: MediaMetadata,
+        original_path: str,
+        original_record: MediaRecord | None,
+        reason: str,
+    ) -> MediaRecord:
+        if original_record:
+            subject = original_record.subject
+            subject_confidence = original_record.subject_confidence
+            subject_scores = dict(original_record.subject_scores)
+            is_solo_person = original_record.is_solo_person
+            solo_label = original_record.solo_label
+            solo_confidence = original_record.solo_confidence
+            count_scores = dict(original_record.count_scores)
+            category = original_record.category
+            category_confidence = original_record.category_confidence
+            category_scores = dict(original_record.category_scores)
+            face_identity = original_record.face_identity
+            sampled_frames = list(original_record.sampled_frames)
+            original_source = original_record.source
+        else:
+            subject = "unknown"
+            subject_confidence = 0.0
+            subject_scores = {}
+            is_solo_person = False
+            solo_label = "unknown"
+            solo_confidence = 0.0
+            count_scores = {}
+            category = None
+            category_confidence = 0.0
+            category_scores = {}
+            face_identity = None
+            sampled_frames = []
+            original_source = original_path
+
+        return MediaRecord(
+            source=str(file_path),
+            media_type=media_type,
+            destination=None,
+            route_label=None,
+            metadata=metadata,
+            subject=subject,
+            subject_confidence=subject_confidence,
+            subject_scores=subject_scores,
+            is_solo_person=is_solo_person,
+            solo_label=solo_label,
+            solo_confidence=solo_confidence,
+            count_scores=count_scores,
+            category=category,
+            category_confidence=category_confidence,
+            category_scores=category_scores,
+            face_identity=face_identity,
+            sampled_frames=sampled_frames,
+            status="duplicate",
+            error=f"duplicate ({reason}) of {original_source}",
+        )
+
+    def _register_unique_entry(
+        self,
+        source_path: str,
+        sha_hash: str | None,
+        embedding: np.ndarray | None,
+        record: MediaRecord,
+    ) -> None:
+        if sha_hash:
+            self._dedup_hash_index[sha_hash] = source_path
+        if embedding is not None:
+            self._embedding_index.append((embedding.copy(), source_path))
+        self._record_registry[source_path] = record
+
+    def _find_near_duplicate(self, embedding: np.ndarray) -> str | None:
+        threshold = self.config.dedup_similarity_threshold
+        for candidate, path in self._embedding_index:
+            score = float(np.dot(embedding, candidate))
+            if score >= threshold:
+                return path
+        return None
+
+    def _resolve_capture_date(self, file_path: Path, exif: dict[str, str], mtime_ns: int) -> str:
+        for key in ("DateTimeOriginal", "DateTime", "CreateDate"):
+            parsed = self._parse_exif_datetime(exif.get(key))
+            if parsed:
+                return parsed.isoformat()
+
+        filename_date = self._extract_date_from_filename(file_path.name)
+        if filename_date:
+            return filename_date.isoformat()
+
+        return datetime.fromtimestamp(mtime_ns / 1_000_000_000, tz=timezone.utc).isoformat()
+
+    def _parse_exif_datetime(self, value: str | None) -> datetime | None:
+        if not value:
+            return None
+        raw = str(value).split(".", 1)[0].strip()
+        if not raw:
+            return None
+        for fmt in ("%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        return None
+
+    def _extract_date_from_filename(self, file_name: str) -> datetime | None:
+        match = _FILENAME_DATE_REGEX.search(file_name)
+        if not match:
+            return None
+        try:
+            year, month, day = match.groups()
+            return datetime(int(year), int(month), int(day), tzinfo=timezone.utc)
+        except ValueError:
+            return None
     def _collect_metadata(
         self, file_path: Path, media_type: str, file_size: int, mtime_ns: int
     ) -> MediaMetadata:
@@ -378,6 +678,7 @@ class MediaAnalyzer:
         except Exception:
             pass
 
+        capture_date = self._resolve_capture_date(file_path, exif, mtime_ns)
         return MediaMetadata(
             file_name=file_path.name,
             extension=file_path.suffix.lower(),
@@ -385,6 +686,7 @@ class MediaAnalyzer:
             mtime_ns=mtime_ns,
             width=width,
             height=height,
+            capture_date=capture_date,
             exif=exif,
         )
 
@@ -413,6 +715,7 @@ class MediaAnalyzer:
         except Exception:
             pass
 
+        capture_date = self._resolve_capture_date(file_path, {}, mtime_ns)
         return MediaMetadata(
             file_name=file_path.name,
             extension=file_path.suffix.lower(),
@@ -423,6 +726,7 @@ class MediaAnalyzer:
             frame_count=frame_count,
             fps=fps,
             duration_seconds=duration_seconds,
+            capture_date=capture_date,
             exif={},
         )
 
@@ -433,9 +737,7 @@ class MediaAnalyzer:
         return str(value)
 
     def _iter_input_files(self):
-        for file_path in sorted(self.config.source_dir.rglob("*")):
-            if file_path.is_file() and file_path.suffix.lower() in self.config.all_extensions:
-                yield file_path
+        yield from self._scan_input_files()
 
     def _predict(self, file_path: Path) -> tuple[Prediction, list[int]]:
         ext = file_path.suffix.lower()
@@ -517,6 +819,13 @@ class MediaAnalyzer:
         # not frame ratio). solo_ratio is implicitly captured via is_solo_person.
         solo_confidence = float(count_scores.get(self.config.count_labels[0], 0.0)) if count_scores else 0.0
 
+        embeddings = [pred.embedding for pred in predictions if pred.embedding is not None]
+        aggregated_embedding: np.ndarray | None = None
+        if embeddings:
+            stacked = np.stack(embeddings, axis=0)
+            mean_embedding = np.mean(stacked, axis=0)
+            aggregated_embedding = mean_embedding / (np.linalg.norm(mean_embedding) + 1e-12)
+
         return Prediction(
             file_path=file_path,
             subject=subject,
@@ -529,6 +838,7 @@ class MediaAnalyzer:
             category=category,
             category_confidence=category_confidence,
             category_scores=category_scores,
+            embedding=aggregated_embedding,
         )
 
     @staticmethod
@@ -544,6 +854,9 @@ class MediaAnalyzer:
             self.records, self.config, artifact_root=self._artifact_root()
         )
 
+    async def _write_manifest_async(self) -> Path:
+        return await self._run_io(self._write_manifest)
+
 
 class MediaSorter:
     def __init__(self, config: SorterConfig, classifier: MediaClassifier | None = None) -> None:
@@ -555,71 +868,130 @@ class MediaSorter:
         self.index_updated_count: int = 0
         self.index_skipped_count: int = 0
         self.index_pruned_count: int | None = None
-        self.stats = AnalysisStats(
-            counts={label: 0 for label in self.config.level_prompts}
-            | {self.config.ignored_label: 0, self.config.pet_label: 0}
+        base_counts = {label: 0 for label in self.config.level_prompts}
+        base_counts.update(
+            {
+                self.config.ignored_label: 0,
+                self.config.pet_label: 0,
+                "duplicate": 0,
+                "skipped": 0,
+            }
         )
+        self.stats = AnalysisStats(counts=base_counts)
+        self.planned_moves: list[tuple[Path, Path, str]] = []
+        sorter_workers = max(1, (os.cpu_count() or 1) // 2)
+        self._io_executor = _create_io_executor("media-sorter-sorter-io", sorter_workers)
 
     def run(self) -> AnalysisStats:
-        self._ensure_output_dirs()
-        seen_sources: set[str] = set()
-        index_store: IndexStore | None = None
+        return asyncio.run(self.run_async())
 
-        if self.config.enable_index:
-            artifact_root = self.config.output_dir or (self.config.source_dir / ".media_sorter")
-            self.index_db_path = self.config.index_db_path or (artifact_root / "media_index.sqlite3")
-            index_store = IndexStore(self.index_db_path, mode=self.config.index_mode)
-
+    async def _run_io(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        executor = self._io_executor
+        if executor is None:
+            return func(*args, **kwargs)
+        func_name = getattr(func, "__name__", repr(func))
         try:
-            for file_path in self.analyzer._iter_input_files():
-                if self.config.limit is not None and self.stats.total_seen >= self.config.limit:
-                    break
+            return await asyncio.wait_for(
+                _run_in_executor(executor, func, *args, **kwargs),
+                timeout=_IO_WAIT_TIMEOUT,
+            )
+        except asyncio.TimeoutError as exc:
+            logger.debug("Threaded I/O (%s) timed out; retrying synchronously (%s)", func_name, exc)
+            self._shutdown_io_executor()
+            return func(*args, **kwargs)
 
-                seen_sources.add(str(file_path))
+    def _shutdown_io_executor(self) -> None:
+        if self._io_executor is not None:
+            self._io_executor.shutdown(wait=False)
+            self._io_executor = None
 
+    async def run_async(
+        self,
+        progress_callback: Callable[[Path, AnalysisStats], None] | None = None,
+        *,
+        file_paths: list[Path] | None = None,
+    ) -> AnalysisStats:
+        try:
+            await self._ensure_output_dirs_async()
+            seen_sources: set[str] = set()
+            index_store: IndexStore | None = None
+
+            if self.config.enable_index:
+                artifact_root = self.config.output_dir or (self.config.source_dir / ".media_sorter")
+                self.index_db_path = self.config.index_db_path or (artifact_root / "media_index.sqlite3")
+                index_store = IndexStore(self.index_db_path, mode=self.config.index_mode)
+
+            job_files = file_paths if file_paths is not None else await self.analyzer._collect_input_files_async()
+            try:
+                for file_path in job_files:
+                    if self.config.limit is not None and self.stats.total_seen >= self.config.limit:
+                        break
+
+                    seen_sources.add(str(file_path))
+
+                    if index_store is not None:
+                        should_process, row = index_store.should_process(file_path)
+                        if not should_process and row is not None:
+                            cached = MediaRecord(**record_from_row(row, status="skipped"))
+                            self.records.append(cached)
+                            self.stats.skipped += 1
+                            self.stats.counts["skipped"] = self.stats.counts.get("skipped", 0) + 1
+                            self.index_skipped_count += 1
+                            self.stats.total_seen += 1
+                            if progress_callback:
+                                progress_callback(file_path, self.stats)
+                            continue
+
+                    record = await self.analyzer.analyze_file_async(file_path)
+                    self.stats.image_files = self.analyzer.stats.image_files
+                    self.stats.video_files = self.analyzer.stats.video_files
+
+                    if record.status == "error":
+                        route_label = self.config.ignored_label
+                        destination = self._destination_for_label(route_label)
+                        self.stats.errors += 1
+                        self.stats.counts[route_label] = self.stats.counts.get(route_label, 0) + 1
+                    elif record.status == "duplicate":
+                        route_label = self.config.ignored_label
+                        destination = None
+                        self.stats.counts["duplicate"] = self.stats.counts.get("duplicate", 0) + 1
+                    else:
+                        route_label, destination = self._decide_destination(record)
+                        if route_label:
+                            self.stats.counts[route_label] = self.stats.counts.get(route_label, 0) + 1
+
+                    record.route_label = route_label
+                    record.destination = str(destination) if destination is not None else None
+
+                    if destination is not None and self.config.copy_mode != "none":
+                        destination_file = destination / file_path.name
+                        if self.config.dry_run:
+                            self.planned_moves.append((file_path, destination_file, self.config.copy_mode))
+                        else:
+                            await self._store_async(file_path, destination)
+
+                    self.records.append(record)
+
+                    if index_store is not None:
+                        index_store.upsert_record(record, file_size=record.metadata.file_size, mtime_ns=record.metadata.mtime_ns)
+                        self.index_updated_count += 1
+
+                    self.stats.total_seen += 1
+                    if progress_callback:
+                        progress_callback(file_path, self.stats)
+            finally:
                 if index_store is not None:
-                    should_process, row = index_store.should_process(file_path)
-                    if not should_process and row is not None:
-                        cached = MediaRecord(**record_from_row(row, status="skipped"))
-                        self.records.append(cached)
-                        self.stats.skipped += 1
-                        self.index_skipped_count += 1
-                        self.stats.total_seen += 1
-                        continue
+                    if self.config.index_prune_missing:
+                        self.index_pruned_count = index_store.prune_missing(seen_sources)
+                    index_store.commit()
+                    index_store.close()
 
-                record = self.analyzer.analyze_file(file_path)
-                self.stats.image_files = self.analyzer.stats.image_files
-                self.stats.video_files = self.analyzer.stats.video_files
-
-                if record.status == "error":
-                    route_label = self.config.ignored_label
-                    destination = self._destination_for_label(route_label)
-                    self.stats.errors += 1
-                else:
-                    route_label, destination = self._decide_destination(record)
-
-                record.route_label = route_label
-                record.destination = str(destination) if destination is not None else None
-                self._store(file_path, destination)
-                self.stats.counts[route_label] = self.stats.counts.get(route_label, 0) + 1
-                self.records.append(record)
-
-                if index_store is not None:
-                    index_store.upsert_record(record, file_size=record.metadata.file_size, mtime_ns=record.metadata.mtime_ns)
-                    self.index_updated_count += 1
-
-                self.stats.total_seen += 1
+            if self.config.write_manifest:
+                self.manifest_output_path = await self._write_manifest_async()
+            self.stats.duplicates = self.analyzer.stats.duplicates
+            return self.stats
         finally:
-            if index_store is not None:
-                if self.config.index_prune_missing:
-                    self.index_pruned_count = index_store.prune_missing(seen_sources)
-                index_store.commit()
-                index_store.close()
-
-        if self.config.write_manifest:
-            self.manifest_output_path = self._write_manifest()
-
-        return self.stats
+            self._shutdown_io_executor()
 
     def _destination_for_label(self, label: str) -> Path | None:
         if self.config.output_dir is None:
@@ -639,20 +1011,19 @@ class MediaSorter:
         if self.config.enable_face_sorting:
             (self.config.output_dir / self.config.face_label).mkdir(parents=True, exist_ok=True)
 
+    async def _ensure_output_dirs_async(self) -> None:
+        await self._run_io(self._ensure_output_dirs)
+
     def _decide_destination(self, record: MediaRecord) -> tuple[str, Path | None]:
-        # ── Pet shortcut ────────────────────────────────────────────────────────
         if record.subject == "pet" and self.config.enable_pet_sorting:
             return self.config.pet_label, self._destination_for_label(self.config.pet_label)
 
-        # ── Confidence gate ──────────────────────────────────────────────────────
-        # Route to ignored when there is no usable category prediction.
         if record.category is None:
             return self.config.ignored_label, self._destination_for_label(self.config.ignored_label)
 
         if record.category_confidence < self.config.min_category_confidence:
             return self.config.ignored_label, self._destination_for_label(self.config.ignored_label)
 
-        # ── Face-sorting path (solo person only) ─────────────────────────────────
         if self.config.enable_face_sorting and record.is_solo_person and record.face_identity:
             if self.config.output_dir is None:
                 return f"{self.config.face_label}/{record.face_identity}", None
@@ -661,11 +1032,10 @@ class MediaSorter:
                 self.config.output_dir / self.config.face_label / record.face_identity,
             )
 
-        # ── General category routing (all subjects) ──────────────────────────────
         return record.category, self._destination_for_label(record.category)
 
     def _store(self, source_file: Path, destination_dir: Path | None) -> None:
-        if destination_dir is None or self.config.dry_run or self.config.copy_mode == "none":
+        if destination_dir is None:
             return
 
         destination_dir.mkdir(parents=True, exist_ok=True)
@@ -676,11 +1046,17 @@ class MediaSorter:
         else:
             shutil.move(str(source_file), str(destination_file))
 
+    async def _store_async(self, source_file: Path, destination_dir: Path | None) -> None:
+        await self._run_io(self._store, source_file, destination_dir)
+
     def _write_manifest(self) -> Path:
         artifact_root = self.config.output_dir or (self.config.source_dir / ".media_sorter")
         return _write_records_to_manifest(
             self.records, self.config, artifact_root=artifact_root
         )
+
+    async def _write_manifest_async(self) -> Path:
+        return await self._run_io(self._write_manifest)
 
 
 def _write_records_to_manifest(
